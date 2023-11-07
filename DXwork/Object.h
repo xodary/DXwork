@@ -141,12 +141,16 @@ public:
 	float							m_fSpecularHighlight = 0.0f;
 	float							m_fMetallic = 0.0f;
 	float							m_fGlossyReflection = 0.0f;
-
 };
 
 class CGameObject
 {
+private:
+	int m_nReferences = 0;
 public:
+	void AddRef();
+	void Release();
+
 	CGameObject(int nMeshes, int nMaterials);
 	~CGameObject();
 
@@ -155,16 +159,28 @@ public:
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera=NULL);
 	virtual void OnPrepareRender() { }
 
+	XMFLOAT3 GetPosition();
+	XMFLOAT3 GetLook();
+	XMFLOAT3 GetUp();
+	XMFLOAT3 GetRight();
+
 	virtual void SetMesh(int nIndex, CMesh* pMesh);
+	void SetActive(bool bActive) { m_bActive = bActive; }
+	void SetMovingSpeed(float fSpeed) { m_fMovingSpeed = fSpeed; }
 	void SetShader(int nMaterial, CShader* pShader);
 	void SetMaterial(int nMaterial, CMaterial* pMaterial);
 	void SetChild(CGameObject* pChild);
 	void SetPosition(float x, float y, float z);
+	void SetPosition(XMFLOAT3 xmf3Position);
 	void SetScale(float x, float y, float z);
+	void SetBoundingBoxMesh(int nIndex, CBoundingBoxMesh* pMesh);
 
 	void Rotate(float fPitch = 10.0f, float fYaw = 10.0f, float fRoll = 10.0f);
 	void Rotate(XMFLOAT3* pxmf3Axis, float fAngle);
 	void Rotate(XMFLOAT4* pxmf4Quaternion);
+
+	void UpdateBoundingBox();
+	void RenderBoundingBox(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
 
 	virtual void PrepareAnimate() { }
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent = NULL);
@@ -188,6 +204,7 @@ public:
 
 	static void PrintFrameInfo(CGameObject* pGameObject, CGameObject* pParent);
 
+	bool							m_bActive = true;
 
 	int								m_nMeshes = 0;
 	CMesh							**m_ppMeshes = NULL;
@@ -207,6 +224,11 @@ public:
 
 	char							m_pstrFrameName[64];
 
+	BoundingOrientedBox				*m_pxmBoundingBoxes;
+	CBoundingBoxMesh				**m_ppBoundingBoxMeshes = NULL;
+	
+	float							m_fMovingSpeed = 0.0f;
+	float							m_fMovingRange = 0.0f;
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -266,4 +288,20 @@ public:
 	XMFLOAT3 GetScale() { return(m_xmf3Scale); }
 	float GetWidth() { return(m_nWidth * m_xmf3Scale.x); }
 	float GetLength() { return(m_nLength * m_xmf3Scale.z); }
+};
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+
+class CBulletObject : public CGameObject
+{
+public:
+	XMFLOAT3					m_xmf3FirePosition = XMFLOAT3(0.0f, 0.0f, 1.0f);
+
+	CBulletObject(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature);
+	virtual ~CBulletObject();
+	virtual void PrepareAnimate();
+	virtual void Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent = NULL);
+
+	void SetFirePosition(XMFLOAT3 xmf3FirePosition);
 };

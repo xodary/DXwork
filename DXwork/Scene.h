@@ -21,6 +21,11 @@ public:
 	void PrepareRender(ID3D12GraphicsCommandList* pd3dCommandList);
 	ID3D12RootSignature* GetGraphicsRootSignature() { return(m_pd3dGraphicsRootSignature); }
 
+	void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera = NULL);
+	void RenderBoundingBox(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
+	CHeightMapTerrain* GetTerrain() { return(m_pTerrain); }
+
+
 	ID3D12RootSignature* m_pd3dGraphicsRootSignature = NULL;
 
 	CPlayer						*m_pPlayer = NULL;
@@ -33,7 +38,9 @@ public:
 	ID3D12Resource*				m_pd3dcbAnimation = NULL;
 	XMFLOAT4X4*					m_pcbMappedAnimation = NULL;
 
-	void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera=NULL);
-	CHeightMapTerrain* GetTerrain() { return(m_pTerrain); }
+	CBoundingBoxShader*			m_pBoundingBoxShader = NULL;
+
+	int							m_nShaders = 0;
+	CShader						**m_ppShaders = NULL;
 
 };

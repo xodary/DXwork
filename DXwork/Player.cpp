@@ -356,6 +356,10 @@ void CTerrainPlayer::OnPlayerUpdateCallback(float fTimeElapsed)
 	float fHeight = pTerrain->GetHeight(xmf3PlayerPosition.x, xmf3PlayerPosition.z, bReverseQuad) + 6.0f;
 	if (xmf3PlayerPosition.y < fHeight)
 	{
+		m_xmf3Up = pTerrain->GetNormal(xmf3PlayerPosition.x, xmf3PlayerPosition.z);
+		XMStoreFloat3(&m_xmf3Right, XMVector3Cross(XMLoadFloat3(&m_xmf3Up), XMLoadFloat3(&m_xmf3Look)));
+		XMStoreFloat3(&m_xmf3Look, XMVector3Cross(XMLoadFloat3(&m_xmf3Right), XMLoadFloat3(&m_xmf3Up)));
+
 		XMFLOAT3 xmf3PlayerVelocity = GetVelocity();
 		xmf3PlayerVelocity.y = 0.0f;
 		SetVelocity(xmf3PlayerVelocity);
@@ -395,10 +399,9 @@ CTankPlayer::CTankPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd
 	m_pShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
 	m_pShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 7);
 
-	CGameObject* pGameObject = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/TankFree_Yel.bin", m_pShader);
+	CGameObject* pGameObject = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/TankFree_Blue.bin", m_pShader);
 	SetChild(pGameObject);
-	pGameObject->SetScale(10, 10, 10);
-	pGameObject->Rotate(0, 180, 0);
+	pGameObject->SetScale(8, 8, 8);
 	PrepareAnimate();
 
 	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;

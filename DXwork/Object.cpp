@@ -263,6 +263,22 @@ void CMaterial::ReleaseShaderVariables()
 
 // CGameObject ===================================================================================
 
+void CGameObject::AddRef()
+{
+	m_nReferences++;
+
+	if (m_pSibling) m_pSibling->AddRef();
+	if (m_pChild) m_pChild->AddRef();
+}
+
+void CGameObject::Release()
+{
+	if (m_pSibling) m_pSibling->Release();
+	if (m_pChild) m_pChild->Release();
+
+	if (--m_nReferences <= 0) delete this;
+}
+
 CGameObject::CGameObject(int nMeshes, int nMaterials)
 {
 	m_xmf4x4Transform = Matrix4x4::Identity();
@@ -270,10 +286,15 @@ CGameObject::CGameObject(int nMeshes, int nMaterials)
 
 	m_nMeshes = nMeshes;
 	m_ppMeshes = NULL;
+	m_ppBoundingBoxMeshes = NULL;
 	if (m_nMeshes > 0)
 	{
 		m_ppMeshes = new CMesh * [m_nMeshes];
-		for (int i = 0; i < m_nMeshes; i++)	m_ppMeshes[i] = NULL;
+		m_ppBoundingBoxMeshes = new CBoundingBoxMesh * [m_nMeshes];
+		for (int i = 0; i < m_nMeshes; i++) {
+			m_ppMeshes[i] = NULL;
+			m_ppBoundingBoxMeshes[i] = NULL;
+		}
 	}
 
 	m_nMaterials = nMaterials;
@@ -291,9 +312,12 @@ CGameObject::~CGameObject()
 		for (int i = 0; i < m_nMeshes; i++)
 		{
 			if (m_ppMeshes[i]) m_ppMeshes[i]->Release();
+			if (m_ppBoundingBoxMeshes[i]) m_ppBoundingBoxMeshes[i]->Release();
 			m_ppMeshes[i] = NULL;
+			m_ppBoundingBoxMeshes[i] = NULL;
 		}
 		delete[] m_ppMeshes;
+		delete[] m_ppBoundingBoxMeshes;
 	}
 
 	if (m_nMaterials > 0)
@@ -309,6 +333,8 @@ CGameObject::~CGameObject()
 
 void CGameObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
 {
+	UpdateBoundingBox();
+
 	if (m_pSibling) m_pSibling->Animate(fTimeElapsed, pxmf4x4Parent);
 	if (m_pChild) m_pChild->Animate(fTimeElapsed, &m_xmf4x4World);
 }
@@ -337,6 +363,7 @@ void CGameObject::ReleaseUploadBuffers()
 	for (int i = 0; i < m_nMeshes; i++)
 	{
 		if (m_ppMeshes[i]) m_ppMeshes[i]->ReleaseUploadBuffers();
+		if (m_ppBoundingBoxMeshes[i]) m_ppBoundingBoxMeshes[i]->ReleaseUploadBuffers();
 	}
 
 	for (int i = 0; i < m_nMaterials; i++)
@@ -374,6 +401,7 @@ void CGameObject::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pC
 			for (int i = 0; i < m_nMeshes; i++)
 			{
 				if (m_ppMeshes[i]) m_ppMeshes[i]->Render(pd3dCommandList);
+				if (m_ppBoundingBoxMeshes[i]) m_ppBoundingBoxMeshes[i]->Render(pd3dCommandList);
 			}
 		}
 	}
@@ -385,12 +413,42 @@ void CGameObject::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pC
 	if (m_pChild) m_pChild->Render(pd3dCommandList, pCamera);
 }
 
+XMFLOAT3 CGameObject::GetPosition()
+{
+	return(XMFLOAT3(m_xmf4x4World._41, m_xmf4x4World._42, m_xmf4x4World._43));
+}
+
+XMFLOAT3 CGameObject::GetLook()
+{
+	return(Vector3::Normalize(XMFLOAT3(m_xmf4x4World._31, m_xmf4x4World._32, m_xmf4x4World._33)));
+}
+
+XMFLOAT3 CGameObject::GetUp()
+{
+	return(Vector3::Normalize(XMFLOAT3(m_xmf4x4World._21, m_xmf4x4World._22, m_xmf4x4World._23)));
+}
+
+XMFLOAT3 CGameObject::GetRight()
+{
+	return(Vector3::Normalize(XMFLOAT3(m_xmf4x4World._11, m_xmf4x4World._12, m_xmf4x4World._13)));
+}
+
 void CGameObject::SetMesh(int nIndex, CMesh* pMesh)
 {
 	if (m_ppMeshes)
 	{
 		if (m_ppMeshes[nIndex]) m_ppMeshes[nIndex]->Release();
 		m_ppMeshes[nIndex] = pMesh;
+		if (pMesh) pMesh->AddRef();
+	}
+}
+
+void CGameObject::SetBoundingBoxMesh(int nIndex, CBoundingBoxMesh* pMesh)
+{
+	if (m_ppBoundingBoxMeshes) 
+	{
+		if (m_ppBoundingBoxMeshes[nIndex]) m_ppBoundingBoxMeshes[nIndex]->Release();
+		m_ppBoundingBoxMeshes[nIndex] = pMesh;
 		if (pMesh) pMesh->AddRef();
 	}
 }
@@ -431,6 +489,11 @@ void CGameObject::SetPosition(float x, float y, float z)
 	m_xmf4x4World._43 = z;
 }
 
+void CGameObject::SetPosition(XMFLOAT3 xmf3Position)
+{
+	SetPosition(xmf3Position.x, xmf3Position.y, xmf3Position.z);
+}
+
 void CGameObject::SetScale(float x, float y, float z)
 {
 	XMMATRIX mtxScale = XMMatrixScaling(x, y, z);
@@ -461,6 +524,26 @@ void CGameObject::Rotate(XMFLOAT4* pxmf4Quaternion)
 	m_xmf4x4Transform = Matrix4x4::Multiply(mtxRotate, m_xmf4x4Transform);
 
 	UpdateTransform(NULL);
+}
+
+void CGameObject::UpdateBoundingBox()
+{
+	OnPrepareRender();
+	for (int i = 0; i < m_nMaterials; ++i) {
+		m_ppMeshes[i]->m_xmBoundingBox.Transform(m_pxmBoundingBoxes[i], XMLoadFloat4x4(&m_xmf4x4World));
+		XMStoreFloat4(&m_pxmBoundingBoxes[i].Orientation, XMQuaternionNormalize(XMLoadFloat4(&m_pxmBoundingBoxes[i].Orientation)));
+	}
+}
+
+void CGameObject::RenderBoundingBox(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
+{
+	for (int i = 0; i < m_nMeshes; ++i) {
+		if (m_ppBoundingBoxMeshes[i])
+		{
+			m_ppBoundingBoxMeshes[i]->UpdateVertexPosition(&m_pxmBoundingBoxes[i]);
+			m_ppBoundingBoxMeshes[i]->Render(pd3dCommandList);
+		}
+	}
 }
 
 int CGameObject::FindReplicatedTexture(_TCHAR* pstrTextureName, D3D12_GPU_DESCRIPTOR_HANDLE* pd3dSrvGpuDescriptorHandle)
@@ -847,4 +930,28 @@ CRippleWater::~CRippleWater()
 {
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 
+CBulletObject::CBulletObject(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature) : CGameObject(0, 0)
+{
+}
+
+CBulletObject::~CBulletObject()
+{
+}
+
+void CBulletObject::PrepareAnimate()
+{
+}
+
+void CBulletObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
+{
+	CGameObject::Animate(fTimeElapsed, pxmf4x4Parent);
+}
+
+void CBulletObject::SetFirePosition(XMFLOAT3 xmf3FirePosition)
+{
+	m_xmf3FirePosition = xmf3FirePosition;
+	SetPosition(xmf3FirePosition);
+}
