@@ -171,7 +171,8 @@ struct VS_TERRAIN_INPUT
 {
 	float3 position : POSITION;
 	float4 color : COLOR;
-	float2 uv : TEXCOORD0;
+    float2 uv0 : TEXCOORD0;
+    float2 uv1 : TEXCOORD1;
 };
 
 struct VS_TERRAIN_OUTPUT
@@ -179,7 +180,8 @@ struct VS_TERRAIN_OUTPUT
 	float4 position : SV_POSITION;
 	float4 positionW : POSITION;
 	float4 color : COLOR;
-	float2 uv : TEXCOORD0;
+    float2 uv0 : TEXCOORD0;
+    float2 uv1 : TEXCOORD1;
 };
 
 float GetTerrainHeight(float fx, float fz)
@@ -230,20 +232,21 @@ VS_TERRAIN_OUTPUT VSTerrain(VS_TERRAIN_INPUT input)
 	output.positionW = mul(float4(input.position, 1.0f), gmtxGameObject);
 	output.position = mul(mul(output.positionW, gmtxView), gmtxProjection);
 	output.color = input.color;
-	output.uv = input.uv;
+    output.uv0 = input.uv0;
+    output.uv1 = input.uv1;
 
 	return(output);
 }
 
 float4 PSTerrain(VS_TERRAIN_OUTPUT input) : SV_TARGET
 {
-	float4 cBaseTexColor = gtxtTerrainBaseTexture.Sample(gSamplerState, input.uv);
-    float4 cDetailTexColor = gtxtTerrainDetailTexture.Sample(gSamplerState, input.uv);
+	float4 cBaseTexColor = gtxtTerrainBaseTexture.Sample(gSamplerState, input.uv0);
+    float4 cDetailTexColor = gtxtTerrainDetailTexture.Sample(gSamplerState, input.uv1);
     //float4 cColor = input.color * cBaseTexColor;
     float4 cColor = cBaseTexColor * 0.5f + cDetailTexColor * 0.5f;
 	if ((154.975f < input.positionW.y) && (input.positionW.y < 155.5f))
 	{
-		cColor.rgb += gtxtTerrainWaterTexture.Sample(gSamplerState, float2(input.uv.x * 50.0f, (input.positionW.y - 155.0f) / 3.0f + 0.65f)).rgb * (1.0f - (input.positionW.y - 155.0f) / 5.5f);
+		cColor.rgb += gtxtTerrainWaterTexture.Sample(gSamplerState, float2(input.uv0.x * 50.0f, (input.positionW.y - 155.0f) / 3.0f + 0.65f)).rgb * (1.0f - (input.positionW.y - 155.0f) / 5.5f);
 	}
 	return(cColor);
 }
