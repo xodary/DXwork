@@ -152,6 +152,67 @@ D3D12_SHADER_RESOURCE_VIEW_DESC CTexture::GetShaderResourceViewDesc(int nIndex)
 	return(d3dShaderResourceViewDesc);
 }
 
+int CTexture::LoadTextureFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, CGameObject* pParent, FILE* pInFile, CShader* pShader, UINT nIndex)
+{
+	char pstrTextureName[64] = { '\0' };
+
+	BYTE nStrLength = 64;
+	UINT nReads = (UINT)::fread(&nStrLength, sizeof(BYTE), 1, pInFile);
+	nReads = (UINT)::fread(pstrTextureName, sizeof(char), nStrLength, pInFile);
+	pstrTextureName[nStrLength] = '\0';
+
+	bool bDuplicated = false;
+	bool bLoaded = false;
+	if (strcmp(pstrTextureName, "null"))
+	{
+		bLoaded = true;
+		char pstrFilePath[64] = { '\0' };
+		strcpy_s(pstrFilePath, 64, "Model/Textures/");
+
+		bDuplicated = (pstrTextureName[0] == '@');
+		strcpy_s(pstrFilePath + 15, 64 - 15, (bDuplicated) ? (pstrTextureName + 1) : pstrTextureName);
+		strcpy_s(pstrFilePath + 15 + ((bDuplicated) ? (nStrLength - 1) : nStrLength), 64 - 15 - ((bDuplicated) ? (nStrLength - 1) : nStrLength), ".dds");
+
+		size_t nConverted = 0;
+		mbstowcs_s(&nConverted, m_ppstrTextureNames[nIndex], 64, pstrFilePath, _TRUNCATE);
+
+		static int nTextures = 0, nRepeatedTextures = 0;
+		TCHAR pstrDebug[256] = { 0 };
+		_stprintf_s(pstrDebug, 256, _T("Texture Name: %d %c %s\n"), (pstrTextureName[0] == '@') ? nRepeatedTextures++ : nTextures++, (pstrTextureName[0] == '@') ? '@' : ' ', m_ppstrTextureNames[nIndex]);
+		OutputDebugString(pstrDebug);
+		if (!bDuplicated)
+		{
+			LoadTextureFromDDSFile(pd3dDevice, pd3dCommandList, m_ppstrTextureNames[nIndex], RESOURCE_TEXTURE2D, nIndex);
+			pShader->CreateShaderResourceView(pd3dDevice, this, nIndex);
+			m_pnRootParameterIndices[nIndex] = PARAMETER_STANDARD_TEXTURE + nIndex;
+		}
+		else
+		{
+			if (pParent)
+			{
+				CGameObject* pRootGameObject = pParent;
+				while (pRootGameObject)
+				{
+					if (!pRootGameObject->m_pParent) break;
+					pRootGameObject = pRootGameObject->m_pParent;
+				}
+				D3D12_GPU_DESCRIPTOR_HANDLE d3dSrvGpuDescriptorHandle;
+				int nParameterIndex = pRootGameObject->FindReplicatedTexture(m_ppstrTextureNames[nIndex], &d3dSrvGpuDescriptorHandle);
+				if (nParameterIndex >= 0)
+				{
+					m_pd3dSrvGpuDescriptorHandles[nIndex] = d3dSrvGpuDescriptorHandle;
+					m_pnRootParameterIndices[nIndex] = nParameterIndex;
+				}
+			}
+		}
+	}
+	return(bLoaded);
+}
+
+
+// == CMaterial ==
+
+
 CMaterial::CMaterial()
 {
 }
@@ -178,12 +239,12 @@ void CMaterial::SetTexture(CTexture* pTexture)
 
 void CMaterial::UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList)
 {
-	pd3dCommandList->SetGraphicsRoot32BitConstants(2, 4, &m_xmf4AmbientColor, 16);
-	pd3dCommandList->SetGraphicsRoot32BitConstants(2, 4, &m_xmf4AlbedoColor, 20);
-	pd3dCommandList->SetGraphicsRoot32BitConstants(2, 4, &m_xmf4SpecularColor, 24);
-	pd3dCommandList->SetGraphicsRoot32BitConstants(2, 4, &m_xmf4EmissiveColor, 28);
+	pd3dCommandList->SetGraphicsRoot32BitConstants(PARAMETER_OBJECT, 4, &m_xmf4AmbientColor, 16);
+	pd3dCommandList->SetGraphicsRoot32BitConstants(PARAMETER_OBJECT, 4, &m_xmf4AlbedoColor, 20);
+	pd3dCommandList->SetGraphicsRoot32BitConstants(PARAMETER_OBJECT, 4, &m_xmf4SpecularColor, 24);
+	pd3dCommandList->SetGraphicsRoot32BitConstants(PARAMETER_OBJECT, 4, &m_xmf4EmissiveColor, 28);
 
-	pd3dCommandList->SetGraphicsRoot32BitConstants(2, 1, &m_nType, 32);
+	pd3dCommandList->SetGraphicsRoot32BitConstants(PARAMETER_OBJECT, 1, &m_nType, 32);
 
 	if (m_pTexture) m_pTexture->UpdateShaderVariables(pd3dCommandList);
 }
@@ -246,6 +307,12 @@ CGameObject::~CGameObject()
 
 }
 
+void CGameObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
+{
+	if (m_pSibling) m_pSibling->Animate(fTimeElapsed, pxmf4x4Parent);
+	if (m_pChild) m_pChild->Animate(fTimeElapsed, &m_xmf4x4World);
+}
+
 void CGameObject::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
 {
 }
@@ -295,18 +362,23 @@ void CGameObject::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pC
 
 	UpdateShaderVariable(pd3dCommandList, &m_xmf4x4World);
 
-	if ((m_nMaterials == 1) && (m_ppMaterials[0]))
-	{
-		if (m_ppMaterials[0]->m_pShader) m_ppMaterials[0]->m_pShader->Render(pd3dCommandList, pCamera);
-		m_ppMaterials[0]->UpdateShaderVariables(pd3dCommandList);
-	}
-
-	if (m_ppMeshes)
-	{
-		for (int i = 0; i < m_nMeshes; i++)
+	if (m_nMaterials <= 1) {
+		if ((m_nMaterials == 1) && (m_ppMaterials[0]))
 		{
-			if (m_ppMeshes[i]) m_ppMeshes[i]->Render(pd3dCommandList);
+			if (m_ppMaterials[0]->m_pShader) m_ppMaterials[0]->m_pShader->Render(pd3dCommandList, pCamera);
+			m_ppMaterials[0]->UpdateShaderVariables(pd3dCommandList);
 		}
+
+		if (m_ppMeshes)
+		{
+			for (int i = 0; i < m_nMeshes; i++)
+			{
+				if (m_ppMeshes[i]) m_ppMeshes[i]->Render(pd3dCommandList);
+			}
+		}
+	}
+	else {
+		std::cout << "nMaterial 이 1을 넘었다." << std::endl;
 	}
 
 	if (m_pSibling) m_pSibling->Render(pd3dCommandList, pCamera);
@@ -335,11 +407,294 @@ void CGameObject::SetMaterial(int nMaterial, CMaterial* pMaterial)
 	if (m_ppMaterials[nMaterial]) m_ppMaterials[nMaterial]->AddRef();
 }
 
+void CGameObject::SetChild(CGameObject* pChild)
+{
+	if (m_pChild)
+	{
+		if (pChild) pChild->m_pSibling = m_pChild->m_pSibling;
+		m_pChild->m_pSibling = pChild;
+	}
+	else
+	{
+		m_pChild = pChild;
+	}
+	if (pChild)
+	{
+		pChild->m_pParent = this;
+	}
+}
+
 void CGameObject::SetPosition(float x, float y, float z)
 {
 	m_xmf4x4World._41 = x;
 	m_xmf4x4World._42 = y;
 	m_xmf4x4World._43 = z;
+}
+
+void CGameObject::SetScale(float x, float y, float z)
+{
+	XMMATRIX mtxScale = XMMatrixScaling(x, y, z);
+	m_xmf4x4Transform = Matrix4x4::Multiply(mtxScale, m_xmf4x4Transform);
+
+	UpdateTransform(NULL);
+}
+
+void CGameObject::Rotate(float fPitch, float fYaw, float fRoll)
+{
+	XMMATRIX mtxRotate = XMMatrixRotationRollPitchYaw(XMConvertToRadians(fPitch), XMConvertToRadians(fYaw), XMConvertToRadians(fRoll));
+	m_xmf4x4Transform = Matrix4x4::Multiply(mtxRotate, m_xmf4x4Transform);
+
+	UpdateTransform(NULL);
+}
+
+void CGameObject::Rotate(XMFLOAT3* pxmf3Axis, float fAngle)
+{
+	XMMATRIX mtxRotate = XMMatrixRotationAxis(XMLoadFloat3(pxmf3Axis), XMConvertToRadians(fAngle));
+	m_xmf4x4Transform = Matrix4x4::Multiply(mtxRotate, m_xmf4x4Transform);
+
+	UpdateTransform(NULL);
+}
+
+void CGameObject::Rotate(XMFLOAT4* pxmf4Quaternion)
+{
+	XMMATRIX mtxRotate = XMMatrixRotationQuaternion(XMLoadFloat4(pxmf4Quaternion));
+	m_xmf4x4Transform = Matrix4x4::Multiply(mtxRotate, m_xmf4x4Transform);
+
+	UpdateTransform(NULL);
+}
+
+int CGameObject::FindReplicatedTexture(_TCHAR* pstrTextureName, D3D12_GPU_DESCRIPTOR_HANDLE* pd3dSrvGpuDescriptorHandle)
+{
+	int nParameterIndex = -1;
+
+	for (int i = 0; i < m_nMaterials; i++)
+	{
+		if (m_ppMaterials[i] && m_ppMaterials[i]->m_pTexture)
+		{
+			int nTextures = m_ppMaterials[i]->m_pTexture->GetTextures();
+			for (int j = 0; j < nTextures; j++)
+			{
+				if (!_tcsncmp(m_ppMaterials[i]->m_pTexture->GetTextureName(j), pstrTextureName, _tcslen(pstrTextureName)))
+				{
+					*pd3dSrvGpuDescriptorHandle = m_ppMaterials[i]->m_pTexture->GetGpuDescriptorHandle(j);
+					nParameterIndex = m_ppMaterials[i]->m_pTexture->GetRootParameter(j);
+					return(nParameterIndex);
+				}
+			}
+		}
+	}
+	if (m_pSibling) if ((nParameterIndex = m_pSibling->FindReplicatedTexture(pstrTextureName, pd3dSrvGpuDescriptorHandle)) > 0) return(nParameterIndex);
+	if (m_pChild) if ((nParameterIndex = m_pChild->FindReplicatedTexture(pstrTextureName, pd3dSrvGpuDescriptorHandle)) > 0) return(nParameterIndex);
+
+	return(nParameterIndex);
+}
+
+void CGameObject::LoadMaterialsFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, CGameObject* pParent, FILE* pInFile, CShader* pShader)
+{
+	char pstrToken[64] = { '\0' };
+
+	int nMaterial = 0;
+	BYTE nStrLength = 0;
+
+	UINT nReads = (UINT)::fread(&m_nMaterials, sizeof(int), 1, pInFile);
+
+	m_ppMaterials = new CMaterial * [m_nMaterials];
+	for (int i = 0; i < m_nMaterials; i++) m_ppMaterials[i] = NULL;
+
+	CMaterial* pMaterial = NULL;
+	CTexture* pTexture = NULL;
+
+	for (; ; )
+	{
+		nReads = (UINT)::fread(&nStrLength, sizeof(BYTE), 1, pInFile);
+		nReads = (UINT)::fread(pstrToken, sizeof(char), nStrLength, pInFile);
+		pstrToken[nStrLength] = '\0';
+
+		if (!strcmp(pstrToken, "<Material>:"))
+		{
+			nReads = (UINT)::fread(&nMaterial, sizeof(int), 1, pInFile);
+
+			pMaterial = new CMaterial();
+			pTexture = new CTexture(7, RESOURCE_TEXTURE2D, 0, 7); //0:Albedo, 1:Specular, 2:Metallic, 3:Normal, 4:Emission, 5:DetailAlbedo, 6:DetailNormal
+			pMaterial->SetTexture(pTexture);
+			//pMaterial->SetShader(pShader);
+			SetMaterial(nMaterial, pMaterial);
+
+			UINT nMeshType = GetMeshType(0);
+			//if (nMeshType & VERTEXT_NORMAL_TEXTURE) pMaterial->SetStandardShader();
+		}
+		else if (!strcmp(pstrToken, "<AlbedoColor>:"))
+		{
+			nReads = (UINT)::fread(&(pMaterial->m_xmf4AlbedoColor), sizeof(float), 4, pInFile);
+		}
+		else if (!strcmp(pstrToken, "<EmissiveColor>:"))
+		{
+			nReads = (UINT)::fread(&(pMaterial->m_xmf4EmissiveColor), sizeof(float), 4, pInFile);
+		}
+		else if (!strcmp(pstrToken, "<SpecularColor>:"))
+		{
+			nReads = (UINT)::fread(&(pMaterial->m_xmf4SpecularColor), sizeof(float), 4, pInFile);
+		}
+		else if (!strcmp(pstrToken, "<Glossiness>:"))
+		{
+			nReads = (UINT)::fread(&(pMaterial->m_fGlossiness), sizeof(float), 1, pInFile);
+		}
+		else if (!strcmp(pstrToken, "<Smoothness>:"))
+		{
+			nReads = (UINT)::fread(&(pMaterial->m_fSmoothness), sizeof(float), 1, pInFile);
+		}
+		else if (!strcmp(pstrToken, "<Metallic>:"))
+		{
+			nReads = (UINT)::fread(&(pMaterial->m_fSpecularHighlight), sizeof(float), 1, pInFile);
+		}
+		else if (!strcmp(pstrToken, "<SpecularHighlight>:"))
+		{
+			nReads = (UINT)::fread(&(pMaterial->m_fMetallic), sizeof(float), 1, pInFile);
+		}
+		else if (!strcmp(pstrToken, "<GlossyReflection>:"))
+		{
+			nReads = (UINT)::fread(&(pMaterial->m_fGlossyReflection), sizeof(float), 1, pInFile);
+		}
+		else if (!strcmp(pstrToken, "<AlbedoMap>:"))
+		{
+			if (pTexture->LoadTextureFromFile(pd3dDevice, pd3dCommandList, pParent, pInFile, pShader, 0)) pMaterial->SetMaterialType(MATERIAL_ALBEDO_MAP);
+		}
+		else if (!strcmp(pstrToken, "<SpecularMap>:"))
+		{
+			if (pTexture->LoadTextureFromFile(pd3dDevice, pd3dCommandList, pParent, pInFile, pShader, 1)) pMaterial->SetMaterialType(MATERIAL_SPECULAR_MAP);
+		}
+		else if (!strcmp(pstrToken, "<NormalMap>:"))
+		{
+			if (pTexture->LoadTextureFromFile(pd3dDevice, pd3dCommandList, pParent, pInFile, pShader, 2)) pMaterial->SetMaterialType(MATERIAL_NORMAL_MAP);
+		}
+		else if (!strcmp(pstrToken, "<MetallicMap>:"))
+		{
+			if (pTexture->LoadTextureFromFile(pd3dDevice, pd3dCommandList, pParent, pInFile, pShader, 3)) pMaterial->SetMaterialType(MATERIAL_METALLIC_MAP);
+		}
+		else if (!strcmp(pstrToken, "<EmissionMap>:"))
+		{
+			if (pTexture->LoadTextureFromFile(pd3dDevice, pd3dCommandList, pParent, pInFile, pShader, 4)) pMaterial->SetMaterialType(MATERIAL_EMISSION_MAP);
+		}
+		else if (!strcmp(pstrToken, "<DetailAlbedoMap>:"))
+		{
+			if (pTexture->LoadTextureFromFile(pd3dDevice, pd3dCommandList, pParent, pInFile, pShader, 5)) pMaterial->SetMaterialType(MATERIAL_DETAIL_ALBEDO_MAP);
+		}
+		else if (!strcmp(pstrToken, "<DetailNormalMap>:"))
+		{
+			if (pTexture->LoadTextureFromFile(pd3dDevice, pd3dCommandList, pParent, pInFile, pShader, 6)) pMaterial->SetMaterialType(MATERIAL_DETAIL_NORMAL_MAP);
+		}
+		else if (!strcmp(pstrToken, "</Materials>"))
+		{
+			break;
+		}
+	}
+}
+
+CGameObject* CGameObject::LoadFrameHierarchyFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, CGameObject* pParent, FILE* pInFile, CShader* pShader)
+{
+	char pstrToken[64] = { '\0' };
+
+	BYTE nStrLength = 0;
+	UINT nReads = 0;
+
+	int nFrame = 0, nTextures = 0;
+
+	CGameObject* pGameObject = NULL;
+
+	for (; ; )
+	{
+		nReads = (UINT)::fread(&nStrLength, sizeof(BYTE), 1, pInFile);
+		nReads = (UINT)::fread(pstrToken, sizeof(char), nStrLength, pInFile);
+		pstrToken[nStrLength] = '\0';
+
+		if (!strcmp(pstrToken, "<Frame>:"))
+		{
+			pGameObject = new CGameObject(1, 1);
+
+			nReads = (UINT)::fread(&nFrame, sizeof(int), 1, pInFile);
+			nReads = (UINT)::fread(&nTextures, sizeof(int), 1, pInFile);
+
+			nReads = (UINT)::fread(&nStrLength, sizeof(BYTE), 1, pInFile);
+			nReads = (UINT)::fread(pGameObject->m_pstrFrameName, sizeof(char), nStrLength, pInFile);
+			pGameObject->m_pstrFrameName[nStrLength] = '\0';
+		}
+		else if (!strcmp(pstrToken, "<Transform>:"))
+		{
+			XMFLOAT3 xmf3Position, xmf3Rotation, xmf3Scale;
+			XMFLOAT4 xmf4Rotation;
+			nReads = (UINT)::fread(&xmf3Position, sizeof(float), 3, pInFile);
+			nReads = (UINT)::fread(&xmf3Rotation, sizeof(float), 3, pInFile); //Euler Angle
+			nReads = (UINT)::fread(&xmf3Scale, sizeof(float), 3, pInFile);
+			nReads = (UINT)::fread(&xmf4Rotation, sizeof(float), 4, pInFile); //Quaternion
+		}
+		else if (!strcmp(pstrToken, "<TransformMatrix>:"))
+		{
+			nReads = (UINT)::fread(&pGameObject->m_xmf4x4Transform, sizeof(float), 16, pInFile);
+		}
+		else if (!strcmp(pstrToken, "<Mesh>:"))
+		{
+			CStandardMesh* pMesh = new CStandardMesh(pd3dDevice, pd3dCommandList);
+			pMesh->LoadMeshFromFile(pd3dDevice, pd3dCommandList, pInFile);
+			pGameObject->SetMesh(0, pMesh);
+		}
+		else if (!strcmp(pstrToken, "<Materials>:"))
+		{
+			pGameObject->LoadMaterialsFromFile(pd3dDevice, pd3dCommandList, pParent, pInFile, pShader);
+		}
+		else if (!strcmp(pstrToken, "<Children>:"))
+		{
+			int nChilds = 0;
+			nReads = (UINT)::fread(&nChilds, sizeof(int), 1, pInFile);
+			if (nChilds > 0)
+			{
+				for (int i = 0; i < nChilds; i++)
+				{
+					CGameObject* pChild = CGameObject::LoadFrameHierarchyFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, pGameObject, pInFile, pShader);
+					if (pChild) pGameObject->SetChild(pChild);
+#ifdef _WITH_DEBUG_FRAME_HIERARCHY
+					TCHAR pstrDebug[256] = { 0 };
+					_stprintf_s(pstrDebug, 256, _T("(Frame: %p) (Parent: %p)\n"), pChild, pGameObject);
+					OutputDebugString(pstrDebug);
+#endif
+				}
+			}
+		}
+		else if (!strcmp(pstrToken, "</Frame>"))
+		{
+			break;
+		}
+	}
+	return(pGameObject);
+}
+
+void CGameObject::PrintFrameInfo(CGameObject* pGameObject, CGameObject* pParent)
+{
+	TCHAR pstrDebug[256] = { 0 };
+
+	_stprintf_s(pstrDebug, 256, _T("(Frame: %p) (Parent: %p)\n"), pGameObject, pParent);
+	OutputDebugString(pstrDebug);
+
+	if (pGameObject->m_pSibling) CGameObject::PrintFrameInfo(pGameObject->m_pSibling, pParent);
+	if (pGameObject->m_pChild) CGameObject::PrintFrameInfo(pGameObject->m_pChild, pGameObject);
+}
+
+CGameObject* CGameObject::LoadGeometryFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, char* pstrFileName, CShader* pShader)
+{
+	FILE* pInFile = NULL;
+	::fopen_s(&pInFile, pstrFileName, "rb");
+	::rewind(pInFile);
+
+	CGameObject* pGameObject = CGameObject::LoadFrameHierarchyFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, NULL, pInFile, pShader);
+
+#ifdef _WITH_DEBUG_FRAME_HIERARCHY
+	TCHAR pstrDebug[256] = { 0 };
+	_stprintf_s(pstrDebug, 256, _T("Frame Hierarchy\n"));
+	OutputDebugString(pstrDebug);
+
+	CGameObject::PrintFrameInfo(pGameObject, NULL);
+#endif
+
+	return(pGameObject);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -491,3 +846,5 @@ CRippleWater::CRippleWater(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* 
 CRippleWater::~CRippleWater()
 {
 }
+
+

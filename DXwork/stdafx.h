@@ -5,11 +5,15 @@
 
 #pragma once
 
+#define PARAMETER_PLAYER 0
+#define PARAMETER_CAMERA 1
+#define PARAMETER_OBJECT 2
 #define PARAMETER_SKYBOX_CUBE_TEXTURE 3
 #define PARAMETER_WATER_TEXTURE 4
 #define PARAMETER_TERRAIN 5
 #define PARAMETER_TIME 6
 #define PARAMETER_ANIMATION 7
+#define PARAMETER_STANDARD_TEXTURE 8
 
 #define WIN32_LEAN_AND_MEAN             // 거의 사용되지 않는 내용은 Windows 헤더에서 제외합니다.
 // Windows 헤더 파일:

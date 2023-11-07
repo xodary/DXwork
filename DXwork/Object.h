@@ -37,6 +37,8 @@ struct CB_GAMEOBJECT_INFO
 	UINT							m_nType;
 };
 
+class CGameObject;
+
 class CTexture
 {
 public:
@@ -63,6 +65,7 @@ private:
 	int								m_nSamplers = 0;
 	D3D12_GPU_DESCRIPTOR_HANDLE		*m_pd3dSamplerGpuDescriptorHandles = NULL;
 
+
 public:
 
 	void AddRef() { m_nReferences++; }
@@ -77,6 +80,8 @@ public:
 
 	int GetTextures() { return(m_nTextures); }
 	ID3D12Resource* GetResource(int nIndex) { return(m_ppd3dTextures[nIndex]); }
+	int LoadTextureFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, CGameObject* pParent, FILE* pInFile, CShader* pShader, UINT nIndex);
+	_TCHAR* GetTextureName(int nIndex) { return(m_ppstrTextureNames[nIndex]); }
 
 	UINT GetTextureType() { return(m_nTextureType); }
 	UINT GetTextureType(int nIndex) { return(m_pnResourceTypes[nIndex]); }
@@ -84,11 +89,20 @@ public:
 
 	void SetRootParameterIndex(int nIndex, UINT nRootParameterIndex);
 	void SetGpuDescriptorHandle(int nIndex, D3D12_GPU_DESCRIPTOR_HANDLE d3dSrvGpuDescriptorHandle);
-	D3D12_GPU_DESCRIPTOR_HANDLE GetGpuDescriptorHandle(int nIndex) { return(m_pd3dSrvGpuDescriptorHandles[nIndex]); }
-
+	int GetRootParameter(int nIndex) { return(m_pnRootParameterIndices[nIndex]); }
 	int GetRootParameters() { return(m_nRootParameters); }
-
+	D3D12_GPU_DESCRIPTOR_HANDLE GetGpuDescriptorHandle(int nIndex) { return(m_pd3dSrvGpuDescriptorHandles[nIndex]); }
 };
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+#define MATERIAL_ALBEDO_MAP			0x01
+#define MATERIAL_SPECULAR_MAP		0x02
+#define MATERIAL_NORMAL_MAP			0x04
+#define MATERIAL_METALLIC_MAP		0x08
+#define MATERIAL_EMISSION_MAP		0x10
+#define MATERIAL_DETAIL_ALBEDO_MAP	0x20
+#define MATERIAL_DETAIL_NORMAL_MAP	0x40
+
 
 class CMaterial
 {
@@ -121,6 +135,13 @@ public:
 	virtual void ReleaseShaderVariables();
 
 	UINT							m_nType = 0x00;
+
+	float							m_fGlossiness = 0.0f;
+	float							m_fSmoothness = 0.0f;
+	float							m_fSpecularHighlight = 0.0f;
+	float							m_fMetallic = 0.0f;
+	float							m_fGlossyReflection = 0.0f;
+
 };
 
 class CGameObject
@@ -137,8 +158,16 @@ public:
 	virtual void SetMesh(int nIndex, CMesh* pMesh);
 	void SetShader(int nMaterial, CShader* pShader);
 	void SetMaterial(int nMaterial, CMaterial* pMaterial);
-
+	void SetChild(CGameObject* pChild);
 	void SetPosition(float x, float y, float z);
+	void SetScale(float x, float y, float z);
+
+	void Rotate(float fPitch = 10.0f, float fYaw = 10.0f, float fRoll = 10.0f);
+	void Rotate(XMFLOAT3* pxmf3Axis, float fAngle);
+	void Rotate(XMFLOAT4* pxmf4Quaternion);
+
+	virtual void PrepareAnimate() { }
+	virtual void Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent = NULL);
 
 	virtual void CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
 	virtual void UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList);
@@ -147,6 +176,18 @@ public:
 	virtual void UpdateShaderVariable(ID3D12GraphicsCommandList* pd3dCommandList, XMFLOAT4X4* pxmf4x4World);
 
 	virtual void ReleaseUploadBuffers();
+
+	int FindReplicatedTexture(_TCHAR* pstrTextureName, D3D12_GPU_DESCRIPTOR_HANDLE* pd3dSrvGpuDescriptorHandle);
+
+	UINT GetMeshType(UINT nIndex) { return((m_ppMeshes[nIndex]) ? m_ppMeshes[nIndex]->GetType() : 0x00); }
+
+	void LoadMaterialsFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, CGameObject* pParent, FILE* pInFile, CShader* pShader);
+
+	static CGameObject* LoadFrameHierarchyFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, CGameObject* pParent, FILE* pInFile, CShader* pShader);
+	static CGameObject* LoadGeometryFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, char* pstrFileName, CShader* pShader);
+
+	static void PrintFrameInfo(CGameObject* pGameObject, CGameObject* pParent);
+
 
 	int								m_nMeshes = 0;
 	CMesh							**m_ppMeshes = NULL;
@@ -164,6 +205,7 @@ public:
 	ID3D12Resource					*m_pd3dcbGameObject = NULL;
 	CB_GAMEOBJECT_INFO				*m_pcbMappedGameObject = NULL;
 
+	char							m_pstrFrameName[64];
 
 };
 

@@ -263,12 +263,20 @@ void CPlayer::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamer
 {
 	UpdateShaderVariables(pd3dCommandList);
 	DWORD nCameraMode = (pCamera) ? pCamera->GetMode() : 0x00;
-	if (nCameraMode == THIRD_PERSON_CAMERA) CGameObject::Render(pd3dCommandList, pCamera);
+	if (nCameraMode == THIRD_PERSON_CAMERA)
+	{
+		if (m_pShader) m_pShader->Render(pd3dCommandList, pCamera);
+		CGameObject::Render(pd3dCommandList, pCamera);
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // CTerrainPlayer
 //
+CTerrainPlayer::CTerrainPlayer(int nMesh, int nMaterial) : CPlayer(nMesh, nMaterial)
+{
+}
+
 CTerrainPlayer::CTerrainPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, void* pContext, int nMesh, int nMaterial) : CPlayer(nMesh, nMaterial)
 {
 	m_pCamera = ChangeCamera(THIRD_PERSON_CAMERA, 0.0f);
@@ -278,15 +286,10 @@ CTerrainPlayer::CTerrainPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandLi
 	CCubeMeshDiffused* pCubeMesh = new CCubeMeshDiffused(pd3dDevice, pd3dCommandList, 4.0f, 12.0f, 4.0f);
 	SetMesh(0, pCubeMesh);
 
-	CPlayerShader* pShader = new CPlayerShader();
-	pShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
-	pShader->CreateShaderVariables(pd3dDevice, pd3dCommandList);
-	pShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 1);
-
-	CMaterial* pSkyBoxMaterial = new CMaterial();
-	pSkyBoxMaterial->SetShader(pShader);
-
-	SetMaterial(0, pSkyBoxMaterial);
+	m_pShader = new CPlayerShader();
+	m_pShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
+	m_pShader->CreateShaderVariables(pd3dDevice, pd3dCommandList);
+	m_pShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 1);
 
 	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
 	SetPosition(XMFLOAT3(pTerrain->GetWidth() * 0.5f, 2000.0f, pTerrain->GetLength() * 0.5f));
@@ -379,4 +382,53 @@ void CTerrainPlayer::OnCameraUpdateCallback(float fTimeElapsed)
 			p3rdPersonCamera->SetLookAt(GetPosition());
 		}
 	}
+}
+
+CTankPlayer::CTankPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, void* pContext, int nMesh, int nMaterials)
+	: CTerrainPlayer(nMesh, nMaterials)
+{
+	m_pCamera = ChangeCamera(THIRD_PERSON_CAMERA, 0.0f);
+
+	CreateShaderVariables(pd3dDevice, pd3dCommandList);
+
+	m_pShader = new CStandardShader();
+	m_pShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
+	m_pShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 7);
+
+	CGameObject* pGameObject = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/TankFree_Yel.bin", m_pShader);
+	SetChild(pGameObject);
+	pGameObject->SetScale(10, 10, 10);
+	pGameObject->Rotate(0, 180, 0);
+	PrepareAnimate();
+
+	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
+	SetPosition(XMFLOAT3(pTerrain->GetWidth() * 0.5f, 2000.0f, pTerrain->GetLength() * 0.5f));
+	SetPlayerUpdatedContext(pTerrain);
+	SetCameraUpdatedContext(pTerrain);
+}
+
+CTankPlayer::~CTankPlayer()
+{
+}
+
+void CTankPlayer::PrepareAnimate()
+{
+//	m_pMainRotorFrame = FindFrame("Top_Rotor");
+//	m_pTailRotorFrame = FindFrame("Tail_Rotor");
+}
+
+void CTankPlayer::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
+{
+	if (m_pMainRotorFrame)
+	{
+		XMMATRIX xmmtxRotate = XMMatrixRotationY(XMConvertToRadians(360.0f * 2.0f) * fTimeElapsed);
+		m_pMainRotorFrame->m_xmf4x4Transform = Matrix4x4::Multiply(xmmtxRotate, m_pMainRotorFrame->m_xmf4x4Transform);
+	}
+	if (m_pTailRotorFrame)
+	{
+		XMMATRIX xmmtxRotate = XMMatrixRotationX(XMConvertToRadians(360.0f * 4.0f) * fTimeElapsed);
+		m_pTailRotorFrame->m_xmf4x4Transform = Matrix4x4::Multiply(xmmtxRotate, m_pTailRotorFrame->m_xmf4x4Transform);
+	}
+
+	CPlayer::Animate(fTimeElapsed, pxmf4x4Parent);
 }

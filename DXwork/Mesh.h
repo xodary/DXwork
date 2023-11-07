@@ -2,6 +2,23 @@
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
+#define VERTEXT_POSITION				0x01
+#define VERTEXT_COLOR					0x02
+#define VERTEXT_NORMAL					0x04
+#define VERTEXT_TANGENT					0x08
+#define VERTEXT_TEXTURE_COORD0			0x10
+#define VERTEXT_TEXTURE_COORD1			0x20
+
+#define VERTEXT_TEXTURE					(VERTEXT_POSITION | VERTEXT_TEXTURE_COORD0)
+#define VERTEXT_DETAIL					(VERTEXT_POSITION | VERTEXT_TEXTURE_COORD0 | VERTEXT_TEXTURE_COORD1)
+#define VERTEXT_NORMAL_TEXTURE			(VERTEXT_POSITION | VERTEXT_NORMAL | VERTEXT_TEXTURE_COORD0)
+#define VERTEXT_NORMAL_TANGENT_TEXTURE	(VERTEXT_POSITION | VERTEXT_NORMAL | VERTEXT_TANGENT | VERTEXT_TEXTURE_COORD0)
+#define VERTEXT_NORMAL_DETAIL			(VERTEXT_POSITION | VERTEXT_NORMAL | VERTEXT_TEXTURE_COORD0 | VERTEXT_TEXTURE_COORD1)
+#define VERTEXT_NORMAL_TANGENT__DETAIL	(VERTEXT_POSITION | VERTEXT_NORMAL | VERTEXT_TANGENT | VERTEXT_TEXTURE_COORD0 | VERTEXT_TEXTURE_COORD1)
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 class CVertex
 {
 public:
@@ -196,4 +213,47 @@ public:
 
 	virtual float OnGetHeight(int x, int z, void* pContext);
 	virtual XMFLOAT4 OnGetColor(int x, int z, void* pContext);
+};
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+class CStandardMesh : public CMesh
+{
+public:
+	CStandardMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
+	virtual ~CStandardMesh();
+
+protected:
+	XMFLOAT4* m_pxmf4Colors = NULL;
+	XMFLOAT3* m_pxmf3Normals = NULL;
+	XMFLOAT3* m_pxmf3Tangents = NULL;
+	XMFLOAT3* m_pxmf3BiTangents = NULL;
+	XMFLOAT2* m_pxmf2TextureCoords0 = NULL;
+	XMFLOAT2* m_pxmf2TextureCoords1 = NULL;
+
+	ID3D12Resource* m_pd3dTextureCoord0Buffer = NULL;
+	ID3D12Resource* m_pd3dTextureCoord0UploadBuffer = NULL;
+	D3D12_VERTEX_BUFFER_VIEW		m_d3dTextureCoord0BufferView;
+
+	ID3D12Resource* m_pd3dTextureCoord1Buffer = NULL;
+	ID3D12Resource* m_pd3dTextureCoord1UploadBuffer = NULL;
+	D3D12_VERTEX_BUFFER_VIEW		m_d3dTextureCoord1BufferView;
+
+	ID3D12Resource* m_pd3dNormalBuffer = NULL;
+	ID3D12Resource* m_pd3dNormalUploadBuffer = NULL;
+	D3D12_VERTEX_BUFFER_VIEW		m_d3dNormalBufferView;
+
+	ID3D12Resource* m_pd3dTangentBuffer = NULL;
+	ID3D12Resource* m_pd3dTangentUploadBuffer = NULL;
+	D3D12_VERTEX_BUFFER_VIEW		m_d3dTangentBufferView;
+
+	ID3D12Resource* m_pd3dBiTangentBuffer = NULL;
+	ID3D12Resource* m_pd3dBiTangentUploadBuffer = NULL;
+	D3D12_VERTEX_BUFFER_VIEW		m_d3dBiTangentBufferView;
+
+public:
+	void LoadMeshFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, FILE* pInFile);
+
+	virtual void ReleaseUploadBuffers();
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
 };

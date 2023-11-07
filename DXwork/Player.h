@@ -34,6 +34,7 @@ protected:
 
 	CCamera						*m_pCamera = NULL;
 
+	CShader						*m_pShader = NULL;
 
 public:
 	CPlayer(int nMesh, int nMaterial);
@@ -86,6 +87,7 @@ protected:
 class CTerrainPlayer : public CPlayer
 {
 public:
+	CTerrainPlayer(int nMesh, int nMaterial);
 	CTerrainPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, void* pContext = NULL, int nMesh=1, int nMaterials=1);
 	virtual ~CTerrainPlayer();
 
@@ -93,4 +95,17 @@ public:
 
 	virtual void OnPlayerUpdateCallback(float fTimeElapsed);
 	virtual void OnCameraUpdateCallback(float fTimeElapsed);
+};
+
+class CTankPlayer : public CTerrainPlayer
+{
+public:
+	CGameObject* m_pMainRotorFrame = NULL;
+	CGameObject* m_pTailRotorFrame = NULL;
+
+	CTankPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, void* pContext = NULL, int nMesh = 1, int nMaterials = 1);
+	virtual ~CTankPlayer();
+
+	virtual void PrepareAnimate();
+	virtual void Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent = NULL);
 };
