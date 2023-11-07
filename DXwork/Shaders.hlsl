@@ -244,9 +244,119 @@ float4 PSTerrain(VS_TERRAIN_OUTPUT input) : SV_TARGET
     float4 cDetailTexColor = gtxtTerrainDetailTexture.Sample(gSamplerState, input.uv1);
     //float4 cColor = input.color * cBaseTexColor;
     float4 cColor = cBaseTexColor * 0.5f + cDetailTexColor * 0.5f;
-	if ((154.975f < input.positionW.y) && (input.positionW.y < 155.5f))
+	if ((150.0f < input.positionW.y) && (input.positionW.y < 155.5f))
 	{
 		cColor.rgb += gtxtTerrainWaterTexture.Sample(gSamplerState, float2(input.uv0.x * 50.0f, (input.positionW.y - 155.0f) / 3.0f + 0.65f)).rgb * (1.0f - (input.positionW.y - 155.0f) / 5.5f);
 	}
 	return(cColor);
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Standard
+
+#define MATERIAL_ALBEDO_MAP			0x01
+#define MATERIAL_SPECULAR_MAP		0x02
+#define MATERIAL_NORMAL_MAP			0x04
+#define MATERIAL_METALLIC_MAP		0x08
+#define MATERIAL_EMISSION_MAP		0x10
+#define MATERIAL_DETAIL_ALBEDO_MAP	0x20
+#define MATERIAL_DETAIL_NORMAL_MAP	0x40
+
+Texture2D gtxtAlbedoTexture : register(t8);
+Texture2D gtxtSpecularTexture : register(t9);
+Texture2D gtxtNormalTexture : register(t10);
+Texture2D gtxtMetallicTexture : register(t11);
+Texture2D gtxtEmissionTexture : register(t12);
+Texture2D gtxtDetailAlbedoTexture : register(t13);
+Texture2D gtxtDetailNormalTexture : register(t14);
+
+struct VS_STANDARD_INPUT
+{
+    float3 position : POSITION;
+    float2 uv : TEXCOORD;
+    float3 normal : NORMAL;
+    float3 tangent : TANGENT;
+    float3 bitangent : BITANGENT;
+};
+
+struct VS_STANDARD_OUTPUT
+{
+    float4 position : SV_POSITION;
+    float3 positionW : POSITION;
+    float3 normalW : NORMAL;
+    float3 tangentW : TANGENT;
+    float3 bitangentW : BITANGENT;
+    float2 uv : TEXCOORD;
+};
+
+VS_STANDARD_OUTPUT VSStandard(VS_STANDARD_INPUT input)
+{
+    VS_STANDARD_OUTPUT output;
+
+    output.positionW = (float3) mul(float4(input.position, 1.0f), gmtxGameObject);
+    output.normalW = mul(input.normal, (float3x3) gmtxGameObject);
+    output.tangentW = (float3) mul(float4(input.tangent, 1.0f), gmtxGameObject);
+    output.bitangentW = (float3) mul(float4(input.bitangent, 1.0f), gmtxGameObject);
+    output.position = mul(mul(float4(output.positionW, 1.0f), gmtxView), gmtxProjection);
+    output.uv = input.uv;
+
+    return (output);
+}
+
+float4 PSStandard(VS_STANDARD_OUTPUT input) : SV_TARGET
+{
+    float4 cAlbedoColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    float4 cSpecularColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    float4 cNormalColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    float4 cMetallicColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    float4 cEmissionColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
+
+    if (gnTexturesMask & MATERIAL_ALBEDO_MAP)
+        cAlbedoColor = gtxtAlbedoTexture.Sample(gSamplerState, input.uv);
+    if (gnTexturesMask & MATERIAL_SPECULAR_MAP)
+        cSpecularColor = gtxtSpecularTexture.Sample(gSamplerState, input.uv);
+    if (gnTexturesMask & MATERIAL_NORMAL_MAP)
+        cNormalColor = gtxtNormalTexture.Sample(gSamplerState, input.uv);
+    if (gnTexturesMask & MATERIAL_METALLIC_MAP)
+        cMetallicColor = gtxtMetallicTexture.Sample(gSamplerState, input.uv);
+    if (gnTexturesMask & MATERIAL_EMISSION_MAP)
+        cEmissionColor = gtxtEmissionTexture.Sample(gSamplerState, input.uv);
+
+    float4 cIllumination = float4(1.0f, 1.0f, 1.0f, 1.0f);
+    float4 cColor = cAlbedoColor + cSpecularColor + cEmissionColor;
+    if (gnTexturesMask & MATERIAL_NORMAL_MAP)
+    {
+        float3 normalW = input.normalW;
+        float3x3 TBN = float3x3(normalize(input.tangentW), normalize(input.bitangentW), normalize(input.normalW));
+        float3 vNormal = normalize(cNormalColor.rgb * 2.0f - 1.0f); //[0, 1] ¡æ [-1, 1]
+        normalW = normalize(mul(vNormal, TBN));
+//      cIllumination = Lighting(input.positionW, normalW);
+        cColor = lerp(cColor, cIllumination, 0.5f);
+    }
+    return (cColor);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+struct VS_BOUNDINGBOX_INPUT
+{
+    float3 position : POSITION;
+};
+
+struct VS_BOUNDINGBOX_OUTPUT
+{
+    float4 positionH : SV_POSITION;
+};
+
+VS_BOUNDINGBOX_OUTPUT VSBoundingBox(VS_BOUNDINGBOX_INPUT input)
+{
+    VS_BOUNDINGBOX_OUTPUT output;
+    output.positionH = mul(mul(float4(input.position, 1.0f), gmtxView), gmtxProjection);
+    return (output);
+}
+
+float4 PSBoundingBox(VS_BOUNDINGBOX_OUTPUT input) : SV_TARGET
+{
+    return (float4(1.0f, 0.0f, 0.0f, 1.0f));
+}
+

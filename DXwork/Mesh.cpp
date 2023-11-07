@@ -670,3 +670,71 @@ void CStandardMesh::Render(ID3D12GraphicsCommandList* pd3dCommandList)
 		pd3dCommandList->DrawInstanced(m_nVertices, 1, m_nOffset, 0);
 	}
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
+//
+CBoundingBoxMesh::CBoundingBoxMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList) : CMesh(pd3dDevice, pd3dCommandList)
+{
+	m_nVertices = 12 * 2;
+	m_nStride = sizeof(XMFLOAT3);
+	m_nOffset = 0;
+	m_nSlot = 0;
+	m_d3dPrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+
+	m_pd3dPositionBuffer = CreateBufferResource(pd3dDevice, pd3dCommandList, NULL, m_nStride * m_nVertices, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, NULL);
+	m_pd3dPositionBuffer->Map(0, NULL, (void**)&m_pcbMappedPositions);
+
+	m_d3dPositionBufferView.BufferLocation = m_pd3dPositionBuffer->GetGPUVirtualAddress();
+	m_d3dPositionBufferView.StrideInBytes = sizeof(XMFLOAT3);
+	m_d3dPositionBufferView.SizeInBytes = sizeof(XMFLOAT3) * m_nVertices;
+}
+
+CBoundingBoxMesh::~CBoundingBoxMesh()
+{
+	if (m_pd3dPositionBuffer) m_pd3dPositionBuffer->Unmap(0, NULL);
+}
+
+void CBoundingBoxMesh::UpdateVertexPosition(BoundingOrientedBox* pxmBoundingBox)
+{
+	XMFLOAT3 xmf3Corners[8];
+	pxmBoundingBox->GetCorners(xmf3Corners);
+
+	int i = 0;
+
+	m_pcbMappedPositions[i++] = xmf3Corners[0];
+	m_pcbMappedPositions[i++] = xmf3Corners[1];
+
+	m_pcbMappedPositions[i++] = xmf3Corners[1];
+	m_pcbMappedPositions[i++] = xmf3Corners[2];
+
+	m_pcbMappedPositions[i++] = xmf3Corners[2];
+	m_pcbMappedPositions[i++] = xmf3Corners[3];
+
+	m_pcbMappedPositions[i++] = xmf3Corners[3];
+	m_pcbMappedPositions[i++] = xmf3Corners[0];
+
+	m_pcbMappedPositions[i++] = xmf3Corners[4];
+	m_pcbMappedPositions[i++] = xmf3Corners[5];
+
+	m_pcbMappedPositions[i++] = xmf3Corners[5];
+	m_pcbMappedPositions[i++] = xmf3Corners[6];
+
+	m_pcbMappedPositions[i++] = xmf3Corners[6];
+	m_pcbMappedPositions[i++] = xmf3Corners[7];
+
+	m_pcbMappedPositions[i++] = xmf3Corners[7];
+	m_pcbMappedPositions[i++] = xmf3Corners[4];
+
+	m_pcbMappedPositions[i++] = xmf3Corners[0];
+	m_pcbMappedPositions[i++] = xmf3Corners[4];
+
+	m_pcbMappedPositions[i++] = xmf3Corners[1];
+	m_pcbMappedPositions[i++] = xmf3Corners[5];
+
+	m_pcbMappedPositions[i++] = xmf3Corners[2];
+	m_pcbMappedPositions[i++] = xmf3Corners[6];
+
+	m_pcbMappedPositions[i++] = xmf3Corners[3];
+	m_pcbMappedPositions[i++] = xmf3Corners[7];
+}
+

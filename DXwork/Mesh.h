@@ -122,10 +122,15 @@ protected:
 	int								m_nBaseVertex = 0;
 
 public:
+	BoundingOrientedBox				m_xmBoundingBox = BoundingOrientedBox(XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3(0.1f, 0.1f, 0.1f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f));
+
+public:
 	UINT GetType() { return(m_nType); }
 
 	virtual void ReleaseUploadBuffers();
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
+
+	BoundingOrientedBox GetBoundingBox() { return(m_xmBoundingBox); }
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -256,4 +261,17 @@ public:
 
 	virtual void ReleaseUploadBuffers();
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
+};
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+class CBoundingBoxMesh : public CMesh
+{
+public:
+	CBoundingBoxMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
+	virtual ~CBoundingBoxMesh();
+
+	XMFLOAT3* m_pcbMappedPositions = NULL;
+
+	void UpdateVertexPosition(BoundingOrientedBox* pxmBoundingBox);
 };

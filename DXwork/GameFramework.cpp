@@ -347,6 +347,9 @@ void CGameFramework::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPA
 			break;
 		case VK_F10:
 			break;
+		case VK_SPACE:
+ 			((CBulletShader*)(m_pScene->m_ppShaders[0]))->FireBullet(m_pPlayer);
+			break;
 		default:
 			break;
 		}
