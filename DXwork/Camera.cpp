@@ -145,6 +145,15 @@ void CCamera::RegenerateViewMatrix()
 	m_xmf4x4View._43 = -Vector3::DotProduct(m_xmf3Position, m_xmf3Look);
 }
 
+void CCamera::SetLookAt(XMFLOAT3& xmf3Position, XMFLOAT3& xmf3LookAt, XMFLOAT3& xmf3Up)
+{
+	m_xmf3Position = xmf3Position;
+	m_xmf4x4View = Matrix4x4::LookAtLH(m_xmf3Position, xmf3LookAt, xmf3Up);
+	m_xmf3Right = Vector3::Normalize(XMFLOAT3(m_xmf4x4View._11, m_xmf4x4View._21, m_xmf4x4View._31));
+	m_xmf3Up = Vector3::Normalize(XMFLOAT3(m_xmf4x4View._12, m_xmf4x4View._22, m_xmf4x4View._32));
+	m_xmf3Look = Vector3::Normalize(XMFLOAT3(m_xmf4x4View._13, m_xmf4x4View._23, m_xmf4x4View._33));
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // CSpaceShipCamera
 
@@ -153,7 +162,7 @@ CSpaceShipCamera::CSpaceShipCamera(CCamera* pCamera) : CCamera(pCamera)
 	m_nMode = SPACESHIP_CAMERA;
 }
 
-void CSpaceShipCamera::Rotate(float x, float y, float z)
+void CSpaceShipCamera::Rotate(float x, float y, float z, bool World)
 {
 	if (m_pPlayer && (x != 0.0f))
 	{
@@ -209,7 +218,7 @@ CFirstPersonCamera::CFirstPersonCamera(CCamera* pCamera) : CCamera(pCamera)
 	}
 }
 
-void CFirstPersonCamera::Rotate(float x, float y, float z)
+void CFirstPersonCamera::Rotate(float x, float y, float z, bool World)
 {
 	if (x != 0.0f)
 	{
@@ -258,37 +267,79 @@ CThirdPersonCamera::CThirdPersonCamera(CCamera* pCamera) : CCamera(pCamera)
 	}
 }
 
+void CThirdPersonCamera::Rotate(float x, float y, float z, bool World)
+{
+	if (m_pPlayer && (x != 0.0f))
+	{
+		XMFLOAT3 xmf3Right = GetRightVector();
+		if (World) {
+			XMStoreFloat3(&xmf3Right, XMVectorSet(1, 0, 0, 0));
+		}
+		XMMATRIX xmmtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&xmf3Right), XMConvertToRadians(x));
+		m_xmf3Right = Vector3::TransformNormal(m_xmf3Right, xmmtxRotate);
+		m_xmf3Up = Vector3::TransformNormal(m_xmf3Up, xmmtxRotate);
+		m_xmf3Look = Vector3::TransformNormal(m_xmf3Look, xmmtxRotate);
+	}
+	if (m_pPlayer && (y != 0.0f))
+	{
+		XMFLOAT3 xmf3Up = GetUpVector();
+		if (World) {
+			XMStoreFloat3(&xmf3Up, XMVectorSet(0, 1, 0, 0));
+		}
+		XMMATRIX xmmtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&xmf3Up), XMConvertToRadians(y));
+		m_xmf3Right = Vector3::TransformNormal(m_xmf3Right, xmmtxRotate);
+		m_xmf3Up = Vector3::TransformNormal(m_xmf3Up, xmmtxRotate);
+		m_xmf3Look = Vector3::TransformNormal(m_xmf3Look, xmmtxRotate);
+	}
+	if (m_pPlayer && (z != 0.0f))
+	{
+		XMFLOAT3 xmf3Look = GetLookVector();
+		if (World) {
+			XMStoreFloat3(&xmf3Look, XMVectorSet(0, 0, 1, 0));
+		}
+		XMMATRIX xmmtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&xmf3Look), XMConvertToRadians(z));
+		m_xmf3Right = Vector3::TransformNormal(m_xmf3Right, xmmtxRotate);
+		m_xmf3Up = Vector3::TransformNormal(m_xmf3Up, xmmtxRotate);
+		m_xmf3Look = Vector3::TransformNormal(m_xmf3Look, xmmtxRotate);
+	}
+}
+
 void CThirdPersonCamera::Update(XMFLOAT3& xmf3LookAt, float fTimeElapsed)
 {
 	if (m_pPlayer)
 	{
-		XMFLOAT4X4 xmf4x4Rotate = Matrix4x4::Identity();
-		XMFLOAT3 xmf3Right = m_pPlayer->GetRightVector();
-		XMFLOAT3 xmf3Up = m_pPlayer->GetUpVector();
-		XMFLOAT3 xmf3Look = m_pPlayer->GetLookVector();
-		xmf4x4Rotate._11 = xmf3Right.x; xmf4x4Rotate._21 = xmf3Up.x; xmf4x4Rotate._31 = xmf3Look.x;
-		xmf4x4Rotate._12 = xmf3Right.y; xmf4x4Rotate._22 = xmf3Up.y; xmf4x4Rotate._32 = xmf3Look.y;
-		xmf4x4Rotate._13 = xmf3Right.z; xmf4x4Rotate._23 = xmf3Up.z; xmf4x4Rotate._33 = xmf3Look.z;
-		XMFLOAT3 xmf3Offset = Vector3::TransformCoord(m_xmf3Offset, xmf4x4Rotate);
-		XMFLOAT3 xmf3Position = Vector3::Add(m_pPlayer->GetPosition(), xmf3Offset);
-		XMFLOAT3 xmf3Direction = Vector3::Subtract(xmf3Position, m_xmf3Position);
-		float fLength = Vector3::Length(xmf3Direction);
-		xmf3Direction = Vector3::Normalize(xmf3Direction);
-		float fTimeLagScale = (m_fTimeLag) ? fTimeElapsed * (1.0f / m_fTimeLag) : 1.0f;
-		float fDistance = fLength * fTimeLagScale;
-		if (fDistance > fLength) fDistance = fLength;
-		if (fLength < 0.01f) fDistance = fLength;
-		if (fDistance > 0)
+		CGameObject* turret = ((CTankPlayer*)m_pPlayer)->GetTurret();
+		if (turret) 
 		{
-			m_xmf3Position = Vector3::Add(m_xmf3Position, xmf3Direction, fDistance);
-			SetLookAt(xmf3LookAt);
+			XMFLOAT4X4 xmf4x4Rotate = Matrix4x4::Identity();
+			XMFLOAT3 xmf3TurretLook = turret->GetLook();
+			XMFLOAT3 xmf3BodyLook	= m_pPlayer->GetLook();
+			float a = XMVectorGetX(XMLoadFloat3(&((CTankPlayer*)m_pPlayer)->GetTurret()->GetLook()));
+			
+			XMStoreFloat4x4(&xmf4x4Rotate, XMMatrixRotationY(a));
+
+			XMFLOAT3 xmf3Offset		= Vector3::TransformCoord(m_xmf3Offset, xmf4x4Rotate);
+			XMFLOAT3 xmf3Position	= Vector3::Add(m_pPlayer->GetPosition(), xmf3Offset);
+			XMFLOAT3 xmf3Direction	= Vector3::Subtract(xmf3Position, m_xmf3Position);
+			float fLength = Vector3::Length(xmf3Direction);
+			xmf3Direction = Vector3::Normalize(xmf3Direction);
+			float fTimeLagScale = (m_fTimeLag) ? fTimeElapsed * (1.0f / m_fTimeLag) : 1.0f;
+			float fDistance = fLength * fTimeLagScale;
+			if (fDistance > fLength) fDistance = fLength;
+			if (fLength < 0.01f) fDistance = fLength;
+			if (fDistance >= 0)
+			{
+				m_xmf3Position = Vector3::Add(m_xmf3Position, xmf3Direction, fDistance);
+				std::cout << "angleInDegrees: " << XMConvertToDegrees(a) << " / Offset : (" << xmf3Direction.x << ", " << xmf3Direction.y << ", " << xmf3Direction.z << ")" << std::endl;
+				//SetLookAt(xmf3LookAt);
+			}
 		}
 	}
 }
 
 void CThirdPersonCamera::SetLookAt(XMFLOAT3& xmf3LookAt)
 {
-	XMFLOAT4X4 mtxLookAt = Matrix4x4::LookAtLH(m_xmf3Position, xmf3LookAt, m_pPlayer->GetUpVector());
+	XMFLOAT4X4 mtxLookAt = Matrix4x4::LookAtLH(m_xmf3Position, xmf3LookAt, m_xmf3Up);
 	m_xmf3Right = XMFLOAT3(mtxLookAt._11, mtxLookAt._21, mtxLookAt._31);
 	m_xmf3Up = XMFLOAT3(mtxLookAt._12, mtxLookAt._22, mtxLookAt._32);
 	m_xmf3Look = XMFLOAT3(mtxLookAt._13, mtxLookAt._23, mtxLookAt._33);

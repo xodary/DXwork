@@ -174,8 +174,7 @@ public:
 	void SetPosition(XMFLOAT3 xmf3Position);
 	void SetScale(float x, float y, float z);
 	void SetBoundingBoxMesh(int nIndex, CBoundingBoxMesh* pMesh);
-
-	void Rotate(float fPitch = 10.0f, float fYaw = 10.0f, float fRoll = 10.0f);
+	void Rotate(float fPitch = 10.0f, float fYaw = 10.0f, float fRoll = 10.0f, XMFLOAT4X4* parent=NULL);
 	void Rotate(XMFLOAT3* pxmf3Axis, float fAngle);
 	void Rotate(XMFLOAT4* pxmf4Quaternion);
 
@@ -201,6 +200,8 @@ public:
 
 	static CGameObject* LoadFrameHierarchyFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, CGameObject* pParent, FILE* pInFile, CShader* pShader);
 	static CGameObject* LoadGeometryFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, char* pstrFileName, CShader* pShader);
+	CGameObject* FindFrame(char* pstrFrameName);
+	CGameObject* GetParent() { return(m_pParent); }
 
 	static void PrintFrameInfo(CGameObject* pGameObject, CGameObject* pParent);
 
@@ -298,10 +299,28 @@ class CBulletObject : public CGameObject
 public:
 	XMFLOAT3					m_xmf3FirePosition = XMFLOAT3(0.0f, 0.0f, 1.0f);
 
-	CBulletObject(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature);
+	CBulletObject();
 	virtual ~CBulletObject();
 	virtual void PrepareAnimate();
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent = NULL);
 
 	void SetFirePosition(XMFLOAT3 xmf3FirePosition);
+};
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+class CTankObject : public CGameObject
+{
+public:
+	CGameObject					*m_pBodyFrame;
+	CGameObject					*m_pTurretFrame;
+	CGameObject					*m_pTracksBackLeftFrame;
+	CGameObject					*m_pTracksBackRightFrame;
+	CGameObject					*m_pTracksFrontLeftFrame;
+	CGameObject					*m_pTracksFrontRightFrame;
+
+	CTankObject();
+	virtual ~CTankObject();
+
+	virtual void PrepareAnimate();
 };

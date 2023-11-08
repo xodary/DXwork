@@ -21,6 +21,7 @@ public:
 	void PrepareRender(ID3D12GraphicsCommandList* pd3dCommandList);
 	ID3D12RootSignature* GetGraphicsRootSignature() { return(m_pd3dGraphicsRootSignature); }
 
+	void AnimateObjects(float fTimeElapsed);
 	void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera = NULL);
 	void RenderBoundingBox(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
 	CHeightMapTerrain* GetTerrain() { return(m_pTerrain); }

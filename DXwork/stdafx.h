@@ -5,6 +5,8 @@
 
 #pragma once
 
+#define TANK_PLAYER
+
 #define PARAMETER_PLAYER 0
 #define PARAMETER_CAMERA 1
 #define PARAMETER_OBJECT 2

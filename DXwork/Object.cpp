@@ -502,12 +502,12 @@ void CGameObject::SetScale(float x, float y, float z)
 	UpdateTransform(NULL);
 }
 
-void CGameObject::Rotate(float fPitch, float fYaw, float fRoll)
+void CGameObject::Rotate(float fPitch, float fYaw, float fRoll, XMFLOAT4X4* parent)
 {
 	XMMATRIX mtxRotate = XMMatrixRotationRollPitchYaw(XMConvertToRadians(fPitch), XMConvertToRadians(fYaw), XMConvertToRadians(fRoll));
 	m_xmf4x4Transform = Matrix4x4::Multiply(mtxRotate, m_xmf4x4Transform);
 
-	UpdateTransform(NULL);
+	UpdateTransform(parent);
 }
 
 void CGameObject::Rotate(XMFLOAT3* pxmf3Axis, float fAngle)
@@ -780,6 +780,17 @@ CGameObject* CGameObject::LoadGeometryFromFile(ID3D12Device* pd3dDevice, ID3D12G
 	return(pGameObject);
 }
 
+CGameObject* CGameObject::FindFrame(char* pstrFrameName)
+{
+	CGameObject* pFrameObject = NULL;
+	if (!strncmp(m_pstrFrameName, pstrFrameName, strlen(pstrFrameName))) return(this);
+
+	if (m_pSibling) if (pFrameObject = m_pSibling->FindFrame(pstrFrameName)) return(pFrameObject);
+	if (m_pChild) if (pFrameObject = m_pChild->FindFrame(pstrFrameName)) return(pFrameObject);
+
+	return(NULL);
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 
 CSkyBox::CSkyBox(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature) : CGameObject(1, 1)
@@ -932,8 +943,33 @@ CRippleWater::~CRippleWater()
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
+CTankObject::CTankObject() : CGameObject(0,0)
+{
+}
 
-CBulletObject::CBulletObject(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature) : CGameObject(0, 0)
+CTankObject::~CTankObject()
+{
+}
+
+void CTankObject::PrepareAnimate()
+{
+	m_pBodyFrame = FindFrame("TankFree_Blue");
+	m_pTurretFrame = FindFrame("TankFree_Tower");
+	m_pTracksFrontLeftFrame = FindFrame("TankFree_Wheel_f_left");
+	m_pTracksFrontRightFrame = FindFrame("TankFree_Wheel_f_right");
+	m_pTracksBackLeftFrame = FindFrame("TankFree_Wheel_b_left");
+	m_pTracksBackRightFrame = FindFrame("TankFree_Wheel_b_right");
+}
+
+//void CTankObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
+//{
+//	CGameObject::Animate(fTimeElapsed, pxmf4x4Parent);
+//}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+
+CBulletObject::CBulletObject() : CGameObject(0, 0)
 {
 }
 

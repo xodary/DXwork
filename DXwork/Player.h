@@ -13,7 +13,7 @@ struct CB_PLAYER_INFO
 
 class CPlayer : public CGameObject
 {
-protected:
+public:
 	XMFLOAT3					m_xmf3Position;
 	XMFLOAT3					m_xmf3Right;
 	XMFLOAT3					m_xmf3Up;
@@ -71,8 +71,9 @@ public:
 
 	void Move(DWORD nDirection, float fDistance, bool bVelocity = false);
 	void Move(const XMFLOAT3& xmf3Shift, bool bVelocity = false);
-	void Rotate(float x, float y, float z);
+	void Rotate(float x=0.f, float y = 0.f, float z = 0.f, bool World=false);
 
+	virtual void Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent = NULL) { }
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
 	virtual void OnPrepareRender();
 	virtual void Update(XMFLOAT3& xmf3LookAt, float fTimeElapsed) { }
@@ -100,12 +101,21 @@ public:
 class CTankPlayer : public CTerrainPlayer
 {
 public:
-	CGameObject* m_pMainRotorFrame = NULL;
-	CGameObject* m_pTailRotorFrame = NULL;
+	CGameObject						*m_pBodyFrame;
+	CGameObject						*m_pTurretFrame;
+	CGameObject						*m_pTracksBackLeftFrame;
+	CGameObject						*m_pTracksBackRightFrame;
+	CGameObject						*m_pTracksFrontLeftFrame;
+	CGameObject						*m_pTracksFrontRightFrame;
+	
+	float							m_fwheelRotationY = 0.0f;
+	float							m_fTurretRotationY = 0.0f;
 
 	CTankPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, void* pContext = NULL, int nMesh = 1, int nMaterials = 1);
 	virtual ~CTankPlayer();
 
 	virtual void PrepareAnimate();
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent = NULL);
+	void RotateTurret(float fAngle);
+	CGameObject* GetTurret() { return m_pTurretFrame; }
 };

@@ -1,4 +1,3 @@
-//-----------------------------------------------------------------------------
 // File: CGameFramework.cpp
 //-----------------------------------------------------------------------------
 
@@ -341,22 +340,52 @@ void CGameFramework::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPA
 		case VK_F1:
 		case VK_F2:
 		case VK_F3:
+			//m_pCamera = m_pPlayer->ChangeCamera((DWORD)(wParam - VK_F1 + 1), m_GameTimer.GetTimeElapsed());
 			break;
 		case VK_F9:
 			ChangeSwapChainState();
 			break;
-		case VK_F10:
+		case VK_F5:
 			break;
-		case VK_SPACE:
- 			((CBulletShader*)(m_pScene->m_ppShaders[0]))->FireBullet(m_pPlayer);
+		case 'a':
+		case 'A':
+		case 'b':
+		case 'B':
+		case VK_LEFT:
+		case VK_RIGHT:
+#ifdef TANK_PLAYER
+			((CTankPlayer*)m_pPlayer)->m_fwheelRotationY = 0;
+#endif
 			break;
 		default:
 			break;
 		}
 		break;
+	case WM_KEYDOWN:
+	{
+		switch (wParam)
+		{
+#ifdef TANK_PLAYER
+		case 'a':
+		case 'A':
+		case VK_LEFT:
+			((CTankPlayer*)m_pPlayer)->m_fwheelRotationY = -30;
+			break;
+		case 'd':
+		case 'D':
+		case VK_RIGHT:
+			((CTankPlayer*)m_pPlayer)->m_fwheelRotationY = 30;
+			break;
+		case VK_SPACE:
+			((CBulletShader*)(m_pScene->m_ppShaders[0]))->FireBullet(m_pPlayer);
+			break;
+#endif
+		}
+	}
 	default:
 		break;
 	}
+
 }
 
 LRESULT CALLBACK CGameFramework::OnProcessingWindowMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam)
@@ -423,8 +452,11 @@ void CGameFramework::BuildObjects()
 	m_pScene = new CScene();
 	m_pScene->BuildObjects(m_pd3dDevice, m_pd3dCommandList);
 
-//	m_pScene->m_pPlayer = m_pPlayer = new CTerrainPlayer(m_pd3dDevice, m_pd3dCommandList, m_pScene->GetGraphicsRootSignature(), m_pScene->GetTerrain(), 1);
+#ifdef TANK_PLAYER	
 	m_pScene->m_pPlayer = m_pPlayer = new CTankPlayer(m_pd3dDevice, m_pd3dCommandList, m_pScene->GetGraphicsRootSignature(), m_pScene->GetTerrain(), 0, 0);
+#else
+	m_pScene->m_pPlayer = m_pPlayer = new CTerrainPlayer(m_pd3dDevice, m_pd3dCommandList, m_pScene->GetGraphicsRootSignature(), m_pScene->GetTerrain(), 1);
+#endif
 	m_pCamera = m_pPlayer->GetCamera();
 
 	m_pd3dCommandList->Close();
@@ -445,44 +477,68 @@ void CGameFramework::ProcessInput()
 {
 	static UCHAR pKeysBuffer[256];
 	bool bProcessedByScene = false;
- 	if (!bProcessedByScene)
+	if (GetKeyboardState(pKeysBuffer))
 	{
 		DWORD dwDirection = 0;
-		if (pKeysBuffer[VK_UP] & 0xF0) dwDirection |= DIR_FORWARD;
-		if (pKeysBuffer[VK_DOWN] & 0xF0) dwDirection |= DIR_BACKWARD;
-		if (pKeysBuffer[VK_LEFT] & 0xF0) dwDirection |= DIR_LEFT;
-		if (pKeysBuffer[VK_RIGHT] & 0xF0) dwDirection |= DIR_RIGHT;
-		if (pKeysBuffer[VK_PRIOR] & 0xF0) dwDirection |= DIR_UP;
-		if (pKeysBuffer[VK_NEXT] & 0xF0) dwDirection |= DIR_DOWN;
-
-		float cxDelta = 0.0f, cyDelta = 0.0f;
-		POINT ptCursorPos;
-		if (GetCapture() == m_hWnd)
+		if ((pKeysBuffer[VK_UP] & 0xF0) || (pKeysBuffer['w'] & 0xF0) || (pKeysBuffer['W'] & 0xF0)) dwDirection |= DIR_BACKWARD;
+		if ((pKeysBuffer[VK_DOWN] & 0xF0) || (pKeysBuffer['s'] & 0xF0) || (pKeysBuffer['S'] & 0xF0)) dwDirection |= DIR_FORWARD;
+		if (dwDirection)
 		{
-			SetCursor(NULL);
-			GetCursorPos(&ptCursorPos);
-			cxDelta = (float)(ptCursorPos.x - m_ptOldCursorPos.x) / 3.0f;
-			cyDelta = (float)(ptCursorPos.y - m_ptOldCursorPos.y) / 3.0f;
-			SetCursorPos(m_ptOldCursorPos.x, m_ptOldCursorPos.y);
+#ifdef TANK_PLAYER
+			XMVECTOR xmvecWheelLook = XMLoadFloat3(&((CTankPlayer*)m_pPlayer)->m_pTracksFrontLeftFrame->GetLook());
+			XMVECTOR xmvecPlayerLook = XMLoadFloat3(&m_pPlayer->GetLook());
+			XMFLOAT3 xmf3Shift = XMFLOAT3(0, 0, 0);
+			float fAngle = XMVectorGetY(XMVector3AngleBetweenNormals(xmvecWheelLook, xmvecPlayerLook));
+			XMVECTOR cross = XMVector3Cross(xmvecWheelLook, xmvecPlayerLook);
+			if (XMVectorGetX(XMVector3Dot(cross, XMVectorSet(0, 1, 0, 0))) > 0) {
+				fAngle = -fAngle;
+			}
+			if (dwDirection & DIR_BACKWARD) {
+				xmf3Shift = Vector3::Add(xmf3Shift, m_pPlayer->GetLook(), 1.f);
+				m_pPlayer->Rotate(0, fAngle, 0, false);
+			}
+			if (dwDirection & DIR_FORWARD) {
+				xmf3Shift = Vector3::Add(xmf3Shift, m_pPlayer->GetLook(), -1.f);
+				m_pPlayer->Rotate(0, -fAngle, 0, false);
+			}
+			m_pPlayer->m_xmf3Velocity = Vector3::Add(m_pPlayer->m_xmf3Velocity, xmf3Shift);
+#endif
 		}
+	}
+	if (GetCapture() == m_hWnd)
+	{
+		SetCursor(NULL);
+		POINT ptCursorPos;
+		GetCursorPos(&ptCursorPos);
 
-		if ((dwDirection != 0) || (cxDelta != 0.0f) || (cyDelta != 0.0f))
+		float cxDelta = (float)(ptCursorPos.x - m_ptOldCursorPos.x) / 5.0f;
+		float cyDelta = (float)(ptCursorPos.y - m_ptOldCursorPos.y) / 10.0f;
+		SetCursorPos(m_ptOldCursorPos.x, m_ptOldCursorPos.y);
+		if (cxDelta || cyDelta)
 		{
 			if (cxDelta || cyDelta)
 			{
-				if (pKeysBuffer[VK_RBUTTON] & 0xF0)
-					m_pPlayer->Rotate(cyDelta, 0.0f, -cxDelta);
-				else
-					m_pPlayer->Rotate(cyDelta, cxDelta, 0.0f);
+#ifdef TANK_PLAYER
+				if (pKeysBuffer[VK_LBUTTON] & 0xF0) 
+				{
+					m_pCamera->Rotate(cyDelta, 0, 0, false);
+					((CTankPlayer*)m_pPlayer)->RotateTurret(cxDelta);
+				}
+#endif
 			}
-			if (dwDirection) m_pPlayer->Move(dwDirection, 50.0f * m_GameTimer.GetTimeElapsed(), true);
 		}
 	}
+
 	m_pPlayer->Update(m_GameTimer.GetTimeElapsed());
 }
 
 void CGameFramework::AnimateObjects()
 {
+	float fTimeElapsed = m_GameTimer.GetTimeElapsed();
+
+	if (m_pScene) m_pScene->AnimateObjects(fTimeElapsed);
+
+	m_pPlayer->Animate(fTimeElapsed, NULL);
 }
 
 void CGameFramework::CreateShaderVariables()

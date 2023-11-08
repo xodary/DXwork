@@ -638,7 +638,7 @@ void CBulletShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommand
 
 	for (int h = 0; h < BULLETS; h++)
 	{
-		m_ppBullets[h] = new CBulletObject(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature);
+		m_ppBullets[h] = new CBulletObject();
 		m_ppBullets[h]->SetChild(pBulletModel);
 		m_ppBullets[h]->SetMovingSpeed(60.0f); 
 		m_ppBullets[h]->SetActive(false);

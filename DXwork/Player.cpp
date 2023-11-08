@@ -32,6 +32,8 @@ CPlayer::CPlayer(int nMesh, int nMaterial) : CGameObject(nMesh, nMaterial)
 CPlayer::CPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, void* pContext, int nMesh, int nMaterials) : CPlayer(nMesh, nMaterials)
 {
 	m_pCamera = ChangeCamera();
+	if (m_pCamera->GetMode() == THIRD_PERSON_CAMERA) m_pCamera->SetLookAt(m_xmf3Position);
+
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
 
@@ -131,63 +133,32 @@ CCamera* CPlayer::ChangeCamera()
 	return(m_pCamera);
 }
 
-void CPlayer::Rotate(float x, float y, float z)
+void CPlayer::Rotate(float fPitch, float fYaw, float fRoll, bool World)
 {
-	DWORD nCurrentCameraMode = m_pCamera->GetMode();
-	if ((nCurrentCameraMode == FIRST_PERSON_CAMERA) || (nCurrentCameraMode == THIRD_PERSON_CAMERA))
+	m_pCamera->Rotate(fPitch, fYaw, fRoll, true);
+	if (fPitch != 0.0f)
 	{
-		if (x != 0.0f)
-		{
-			m_fPitch += x;
-			if (m_fPitch > +89.0f) { x -= (m_fPitch - 89.0f); m_fPitch = +89.0f; }
-			if (m_fPitch < -89.0f) { x -= (m_fPitch + 89.0f); m_fPitch = -89.0f; }
-		}
-		if (y != 0.0f)
-		{
-			m_fYaw += y;
-			if (m_fYaw > 360.0f) m_fYaw -= 360.0f;
-			if (m_fYaw < 0.0f) m_fYaw += 360.0f;
-		}
-		if (z != 0.0f)
-		{
-			m_fRoll += z;
-			if (m_fRoll > +20.0f) { z -= (m_fRoll - 20.0f); m_fRoll = +20.0f; }
-			if (m_fRoll < -20.0f) { z -= (m_fRoll + 20.0f); m_fRoll = -20.0f; }
-		}
-		m_pCamera->Rotate(x, y, z);
-		if (y != 0.0f)
-		{
-			XMMATRIX xmmtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&m_xmf3Up), XMConvertToRadians(y));
-			m_xmf3Look = Vector3::TransformNormal(m_xmf3Look, xmmtxRotate);
-			m_xmf3Right = Vector3::TransformNormal(m_xmf3Right, xmmtxRotate);
-		}
+		XMMATRIX mtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&m_xmf3Right), XMConvertToRadians(fPitch));
+		m_xmf3Look = Vector3::TransformNormal(m_xmf3Look, mtxRotate);
+		m_xmf3Up = Vector3::TransformNormal(m_xmf3Up, mtxRotate);
 	}
-	else if (nCurrentCameraMode == SPACESHIP_CAMERA)
+	if (fYaw != 0.0f)
 	{
-		m_pCamera->Rotate(x, y, z);
-		if (x != 0.0f)
-		{
-			XMMATRIX xmmtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&m_xmf3Right), XMConvertToRadians(x));
-			m_xmf3Look = Vector3::TransformNormal(m_xmf3Look, xmmtxRotate);
-			m_xmf3Up = Vector3::TransformNormal(m_xmf3Up, xmmtxRotate);
-		}
-		if (y != 0.0f)
-		{
-			XMMATRIX xmmtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&m_xmf3Up), XMConvertToRadians(y));
-			m_xmf3Look = Vector3::TransformNormal(m_xmf3Look, xmmtxRotate);
-			m_xmf3Right = Vector3::TransformNormal(m_xmf3Right, xmmtxRotate);
-		}
-		if (z != 0.0f)
-		{
-			XMMATRIX xmmtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&m_xmf3Look), XMConvertToRadians(z));
-			m_xmf3Up = Vector3::TransformNormal(m_xmf3Up, xmmtxRotate);
-			m_xmf3Right = Vector3::TransformNormal(m_xmf3Right, xmmtxRotate);
-		}
+		XMMATRIX mtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&m_xmf3Up), XMConvertToRadians(fYaw));
+		m_xmf3Look = Vector3::TransformNormal(m_xmf3Look, mtxRotate);
+		m_xmf3Right = Vector3::TransformNormal(m_xmf3Right, mtxRotate);
+	}
+	if (fRoll != 0.0f)
+	{
+		XMMATRIX mtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&m_xmf3Look), XMConvertToRadians(fRoll));
+		m_xmf3Up = Vector3::TransformNormal(m_xmf3Up, mtxRotate);
+		m_xmf3Right = Vector3::TransformNormal(m_xmf3Right, mtxRotate);
 	}
 
 	m_xmf3Look = Vector3::Normalize(m_xmf3Look);
-	m_xmf3Right = Vector3::CrossProduct(m_xmf3Up, m_xmf3Look, true);
-	m_xmf3Up = Vector3::CrossProduct(m_xmf3Look, m_xmf3Right, true);
+	m_xmf3Right = Vector3::Normalize(Vector3::CrossProduct(m_xmf3Up, m_xmf3Look));
+	m_xmf3Up = Vector3::Normalize(Vector3::CrossProduct(m_xmf3Look, m_xmf3Right));
+
 }
 
 void CPlayer::Update(float fTimeElapsed)
@@ -211,7 +182,6 @@ void CPlayer::Update(float fTimeElapsed)
 	DWORD nCurrentCameraMode = m_pCamera->GetMode();
 	if (nCurrentCameraMode == THIRD_PERSON_CAMERA) m_pCamera->Update(m_xmf3Position, fTimeElapsed);
 	if (m_pCameraUpdatedContext) OnCameraUpdateCallback(fTimeElapsed);
-	if (nCurrentCameraMode == THIRD_PERSON_CAMERA) m_pCamera->SetLookAt(m_xmf3Position);
 	m_pCamera->RegenerateViewMatrix();
 
 	fLength = Vector3::Length(m_xmf3Velocity);
@@ -335,6 +305,7 @@ CCamera* CTerrainPlayer::ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed)
 		m_pCamera = OnChangeCamera(THIRD_PERSON_CAMERA, nCurrentCameraMode);
 		m_pCamera->SetTimeLag(0.25f);
 		m_pCamera->SetOffset(XMFLOAT3(0.0f, 20.0f, -50.0f));
+		m_pCamera->SetLookAt(Vector3::Add(m_xmf3Position, m_pCamera->GetOffset()), m_xmf3Position, m_xmf3Up);
 		m_pCamera->SetPosition(Vector3::Add(m_xmf3Position, m_pCamera->GetOffset()));
 		m_pCamera->GenerateProjectionMatrix(1.01f, 50000.0f, ASPECT_RATIO, 60.0f);
 		break;
@@ -379,11 +350,11 @@ void CTerrainPlayer::OnCameraUpdateCallback(float fTimeElapsed)
 	if (xmf3CameraPosition.y <= fHeight)
 	{
 		xmf3CameraPosition.y = fHeight;
-		m_pCamera->SetPosition(xmf3CameraPosition);
+		//m_pCamera->SetPosition(xmf3CameraPosition);
 		if (m_pCamera->GetMode() == THIRD_PERSON_CAMERA)
 		{
 			CThirdPersonCamera* p3rdPersonCamera = (CThirdPersonCamera*)m_pCamera;
-			p3rdPersonCamera->SetLookAt(GetPosition());
+			//p3rdPersonCamera->SetLookAt(GetPosition());
 		}
 	}
 }
@@ -397,7 +368,7 @@ CTankPlayer::CTankPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd
 
 	m_pShader = new CStandardShader();
 	m_pShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
-	m_pShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 7);
+	m_pShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 3);
 
 	CGameObject* pGameObject = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/TankFree_Blue.bin", m_pShader);
 	SetChild(pGameObject);
@@ -416,22 +387,51 @@ CTankPlayer::~CTankPlayer()
 
 void CTankPlayer::PrepareAnimate()
 {
-//	m_pMainRotorFrame = FindFrame("Top_Rotor");
-//	m_pTailRotorFrame = FindFrame("Tail_Rotor");
+	m_pBodyFrame = FindFrame("TankFree_Blue");
+	m_pTurretFrame = FindFrame("TankFree_Tower");
+	m_pTracksFrontLeftFrame = FindFrame("TankFree_Wheel_f_left");
+	m_pTracksFrontRightFrame = FindFrame("TankFree_Wheel_f_right");
+	m_pTracksBackLeftFrame = FindFrame("TankFree_Wheel_b_left");
+	m_pTracksBackRightFrame = FindFrame("TankFree_Wheel_b_right");
+	// Body
+	// ¤¤ Turret, FrontTrack, BackTrack ...  
+
 }
 
 void CTankPlayer::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
 {
-	if (m_pMainRotorFrame)
-	{
-		XMMATRIX xmmtxRotate = XMMatrixRotationY(XMConvertToRadians(360.0f * 2.0f) * fTimeElapsed);
-		m_pMainRotorFrame->m_xmf4x4Transform = Matrix4x4::Multiply(xmmtxRotate, m_pMainRotorFrame->m_xmf4x4Transform);
-	}
-	if (m_pTailRotorFrame)
-	{
-		XMMATRIX xmmtxRotate = XMMatrixRotationX(XMConvertToRadians(360.0f * 4.0f) * fTimeElapsed);
-		m_pTailRotorFrame->m_xmf4x4Transform = Matrix4x4::Multiply(xmmtxRotate, m_pTailRotorFrame->m_xmf4x4Transform);
-	}
+	XMFLOAT4X4 preWorld[4] = { m_pTracksFrontLeftFrame->m_xmf4x4World, m_pTracksFrontRightFrame->m_xmf4x4World,
+							   m_pTracksBackLeftFrame->m_xmf4x4World, m_pTracksBackRightFrame->m_xmf4x4World };
+	XMFLOAT4X4 preTrans[4] = { m_pTracksFrontLeftFrame->m_xmf4x4Transform, m_pTracksFrontRightFrame->m_xmf4x4Transform,
+							   m_pTracksBackLeftFrame->m_xmf4x4Transform, m_pTracksBackRightFrame->m_xmf4x4Transform };
 
+	XMMATRIX xmmtxRotate = XMMatrixRotationY(XMConvertToRadians(m_fwheelRotationY * fTimeElapsed));
+	if (m_pTracksFrontLeftFrame) m_pTracksFrontLeftFrame->m_xmf4x4Transform = Matrix4x4::Multiply(xmmtxRotate, m_pTracksFrontLeftFrame->m_xmf4x4Transform);
+	if (m_pTracksFrontRightFrame) m_pTracksFrontRightFrame->m_xmf4x4Transform = Matrix4x4::Multiply(xmmtxRotate, m_pTracksFrontRightFrame->m_xmf4x4Transform);
+	if (m_pTracksBackLeftFrame) m_pTracksBackLeftFrame->m_xmf4x4Transform = Matrix4x4::Multiply(xmmtxRotate, m_pTracksBackLeftFrame->m_xmf4x4Transform);
+	if (m_pTracksBackRightFrame) m_pTracksBackRightFrame->m_xmf4x4Transform = Matrix4x4::Multiply(xmmtxRotate, m_pTracksBackRightFrame->m_xmf4x4Transform);
+	UpdateTransform(NULL);
+	XMFLOAT3 parent = GetLook();
+	XMFLOAT3 child = m_pTracksFrontLeftFrame->GetLook();
+	int angle = Vector3::Angle(parent, child);
+
+	if (angle >= 30) {
+		m_pTracksFrontLeftFrame->m_xmf4x4World = preWorld[0];
+		m_pTracksFrontLeftFrame->m_xmf4x4Transform = preTrans[0];
+		m_pTracksFrontRightFrame->m_xmf4x4World = preWorld[1];
+		m_pTracksFrontRightFrame->m_xmf4x4Transform = preTrans[1];
+
+		m_pTracksBackLeftFrame->m_xmf4x4World = preWorld[2];
+		m_pTracksBackLeftFrame->m_xmf4x4Transform = preTrans[2];
+		m_pTracksBackRightFrame->m_xmf4x4World = preWorld[3];
+		m_pTracksBackRightFrame->m_xmf4x4Transform = preTrans[3];
+	}
 	CPlayer::Animate(fTimeElapsed, pxmf4x4Parent);
+}
+
+void CTankPlayer::RotateTurret(float fAngle)
+{
+	m_pCamera->Rotate(0.0f, fAngle, 0.0f, true);
+	m_pTurretFrame->Rotate(0.0f, fAngle, 0.0f, &m_xmf4x4World);
+	m_fTurretRotationY += fAngle;
 }

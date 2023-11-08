@@ -92,8 +92,9 @@ public:
 
 	virtual void SetViewportsAndScissorRects(ID3D12GraphicsCommandList* pd3dCommandList);
 	virtual void Update(XMFLOAT3& xmf3LookAt, float fTimeElapsed) { }
-	virtual void Rotate(float fPitch = 0.0f, float fYaw = 0.0f, float fRoll = 0.0f) { }
-	virtual void SetLookAt(XMFLOAT3& xmf3LookAt) { }
+	virtual void Rotate(float fPitch = 0.0f, float fYaw = 0.0f, float fRoll = 0.0f, bool World = false) { }
+	void SetLookAt(XMFLOAT3& xmf3LookAt) { }
+	void SetLookAt(XMFLOAT3& xmf3Position, XMFLOAT3& xmf3LookAt, XMFLOAT3& xmf3Up);
 };
 
 class CSpaceShipCamera : public CCamera
@@ -102,7 +103,7 @@ public:
 	CSpaceShipCamera(CCamera* pCamera);
 	virtual ~CSpaceShipCamera() { }
 
-	virtual void Rotate(float fPitch = 0.0f, float fYaw = 0.0f, float fRoll = 0.0f);
+	virtual void Rotate(float fPitch = 0.0f, float fYaw = 0.0f, float fRoll = 0.0f, bool World = true);
 };
 
 class CFirstPersonCamera : public CCamera
@@ -111,7 +112,7 @@ public:
 	CFirstPersonCamera(CCamera* pCamera);
 	virtual ~CFirstPersonCamera() { }
 
-	virtual void Rotate(float fPitch = 0.0f, float fYaw = 0.0f, float fRoll = 0.0f);
+	virtual void Rotate(float fPitch = 0.0f, float fYaw = 0.0f, float fRoll = 0.0f, bool World = true);
 };
 
 class CThirdPersonCamera : public CCamera
@@ -119,7 +120,9 @@ class CThirdPersonCamera : public CCamera
 public:
 	CThirdPersonCamera(CCamera* pCamera);
 	virtual ~CThirdPersonCamera() { }
+	
 	virtual void Update(XMFLOAT3& xmf3LookAt, float fTimeElapsed);
 	virtual void SetLookAt(XMFLOAT3& vLookAt);
+	virtual void Rotate(float fPitch = 0.0f, float fYaw = 0.0f, float fRoll = 0.0f, bool World = false);
 };
 
