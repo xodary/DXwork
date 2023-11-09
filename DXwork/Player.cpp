@@ -415,7 +415,7 @@ void CTankPlayer::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
 	XMFLOAT3 child = m_pTracksFrontLeftFrame->GetLook();
 	int angle = Vector3::Angle(parent, child);
 
-	if (angle >= 30) {
+	if (angle >= 40) {
 		m_pTracksFrontLeftFrame->m_xmf4x4World = preWorld[0];
 		m_pTracksFrontLeftFrame->m_xmf4x4Transform = preTrans[0];
 		m_pTracksFrontRightFrame->m_xmf4x4World = preWorld[1];
