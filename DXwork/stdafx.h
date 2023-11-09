@@ -16,6 +16,7 @@
 #define PARAMETER_TIME 6
 #define PARAMETER_ANIMATION 7
 #define PARAMETER_STANDARD_TEXTURE 8
+#define PARAMETER_2DTEXTURE 15
 
 #define WIN32_LEAN_AND_MEAN             // 거의 사용되지 않는 내용은 Windows 헤더에서 제외합니다.
 // Windows 헤더 파일:
@@ -27,7 +28,7 @@
 #include <malloc.h>
 #include <tchar.h>
 #include <math.h>
-
+#include <random>
 #include <string>
 #include <shellapi.h>
 

@@ -820,6 +820,14 @@ CGameObject* CGameObject::FindFrame(char* pstrFrameName)
 	return(NULL);
 }
 
+void CGameObject::SetLookAt(XMFLOAT3& xmf3Target, XMFLOAT3& xmf3Up)
+{
+	XMFLOAT3 xmf3Position(m_xmf4x4World._41, m_xmf4x4World._42, m_xmf4x4World._43);
+	XMFLOAT4X4 mtxLookAt = Matrix4x4::LookAtLH(xmf3Position, xmf3Target, xmf3Up);
+	m_xmf4x4World._11 = mtxLookAt._11; m_xmf4x4World._12 = mtxLookAt._21; m_xmf4x4World._13 = mtxLookAt._31;
+	m_xmf4x4World._21 = mtxLookAt._12; m_xmf4x4World._22 = mtxLookAt._22; m_xmf4x4World._23 = mtxLookAt._32;
+	m_xmf4x4World._31 = mtxLookAt._13; m_xmf4x4World._32 = mtxLookAt._23; m_xmf4x4World._33 = mtxLookAt._33;
+}
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 
 CSkyBox::CSkyBox(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature) : CGameObject(1, 1)
@@ -1069,10 +1077,6 @@ void CBulletObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
 	CGameObject::Animate(fTimeElapsed, pxmf4x4Parent);
 
 	if ((m_fMovingDistance > m_fBulletEffectiveRange) || (m_fElapsedTimeAfterFire > m_fLockingTime)) Reset();
-	
-	std::cout << "Bullet Pos(" << m_xmf4x4World._41 << ", "
-		<< m_xmf4x4World._42 << ", "
-		<< m_xmf4x4World._43 << ")" << std::endl;
 }
 
 void CBulletObject::SetFirePosition(XMFLOAT3 xmf3FirePosition)
@@ -1088,4 +1092,23 @@ void CBulletObject::Reset()
 	m_fMovingDistance = 0;
 
 	m_bActive = false;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 
+CGrassObject::CGrassObject() : CGameObject(1, 1)
+{
+}
+
+CGrassObject::~CGrassObject()
+{
+}
+
+void CGrassObject::Animate(float fTimeElapsed)
+{
+	if (m_fRotationAngle <= -1.5f) m_fRotationDelta = 1.0f;
+	if (m_fRotationAngle >= +1.5f) m_fRotationDelta = -1.0f;
+	m_fRotationAngle += m_fRotationDelta * fTimeElapsed;
+
+	Rotate(0.0f, 0.0f, m_fRotationAngle);
 }
