@@ -179,6 +179,7 @@ public:
 
 class CPlayer;
 class CBulletObject;
+class CTankObject;
 
 #define BULLETS					10
 class CBulletShader : public CStandardShader
@@ -196,6 +197,21 @@ public:
 
 protected:
 	CBulletObject					**m_ppBullets;
-	float							m_fWindTime = 0.0f;
-	bool							m_bWindSwitch = false;;
+};
+
+#define ENERMY					10
+class CEnermyShader : public CStandardShader
+{
+public:
+	CEnermyShader();
+	virtual ~CEnermyShader();
+	virtual void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, void* pContext = NULL);
+	virtual void AnimateObjects(float fTimeElapsed);
+	virtual void ReleaseObjects();
+	virtual void ReleaseUploadBuffers();
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
+
+protected:
+	CTankObject						**m_ppEnermies;
+	int								m_nEnermies;
 };

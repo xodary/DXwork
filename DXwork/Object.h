@@ -174,6 +174,8 @@ public:
 	void SetPosition(XMFLOAT3 xmf3Position);
 	void SetScale(float x, float y, float z);
 	void SetBoundingBoxMesh(int nIndex, CBoundingBoxMesh* pMesh);
+	void SetMovingDirection(XMFLOAT3& xmf3MovingDirection) { m_xmf3MovingDirection = Vector3::Normalize(xmf3MovingDirection); }
+	
 	void Rotate(float fPitch = 10.0f, float fYaw = 10.0f, float fRoll = 10.0f, XMFLOAT4X4* parent=NULL);
 	void Rotate(XMFLOAT3* pxmf3Axis, float fAngle);
 	void Rotate(XMFLOAT4* pxmf4Quaternion);
@@ -230,6 +232,8 @@ public:
 	
 	float							m_fMovingSpeed = 0.0f;
 	float							m_fMovingRange = 0.0f;
+	XMFLOAT3						m_xmf3MovingDirection = XMFLOAT3(0.0f, 0.0f, 1.0f);
+
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -298,13 +302,20 @@ class CBulletObject : public CGameObject
 {
 public:
 	XMFLOAT3					m_xmf3FirePosition = XMFLOAT3(0.0f, 0.0f, 1.0f);
+	float						m_fBulletEffectiveRange = 300.f;
+	float						m_fElapsedTimeAfterFire = 0.0f;
+	float						m_fLockingDelayTime = 0.3f;
+	float						m_fMovingDistance = 0.0f;
+	float						m_fLockingTime = 40.0f;
+	CGameObject					*m_pLockedObject = NULL;
 
-	CBulletObject();
+	CBulletObject(float fEffectiveRange);
 	virtual ~CBulletObject();
 	virtual void PrepareAnimate();
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent = NULL);
 
 	void SetFirePosition(XMFLOAT3 xmf3FirePosition);
+	void Reset();
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -321,6 +332,6 @@ public:
 
 	CTankObject();
 	virtual ~CTankObject();
-
+	virtual void Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent);
 	virtual void PrepareAnimate();
 };

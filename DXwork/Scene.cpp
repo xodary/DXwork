@@ -33,14 +33,18 @@ void CScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* p
 //	m_pBoundingBoxShader = new CBoundingBoxShader();
 //	m_pBoundingBoxShader->CreateShader(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE);
 
-	m_nShaders = 1;
+	m_nShaders = 2;
 	m_ppShaders = new CShader * [m_nShaders];
 
 	CBulletShader* pObjectsShader = new CBulletShader();
 	pObjectsShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
 	pObjectsShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, m_pTerrain);
-
 	m_ppShaders[0] = pObjectsShader;
+
+	CEnermyShader* pEnermyShader = new CEnermyShader();
+	pEnermyShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
+	pEnermyShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, m_pTerrain);
+	m_ppShaders[1] = pEnermyShader;
 }
 
 ID3D12RootSignature* CScene::CreateGraphicsRootSignature(ID3D12Device* pd3dDevice)
@@ -296,4 +300,6 @@ void CScene::ReleaseShaderVariables()
 	if (m_pTerrain) m_pTerrain->ReleaseShaderVariables();
 	if (m_pSkyBox) m_pSkyBox->ReleaseShaderVariables();
 	if (m_pTerrainWater) m_pTerrainWater->ReleaseShaderVariables();
+
+	for (int i = 0; i < m_nShaders; i++) if (m_ppShaders[i]) m_ppShaders[i]->ReleaseShaderVariables();
 }

@@ -631,17 +631,17 @@ CBulletShader::~CBulletShader()
 
 void CBulletShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, void* pContext)
 {
-//	CGameObject* pBulletModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/¬³TF_Missile_Red.bin", this);
-	
 	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 2);
 	CGameObject* pBulletModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/¬³TF_Missile_Blue.bin", this);
 
 	for (int h = 0; h < BULLETS; h++)
 	{
-		m_ppBullets[h] = new CBulletObject();
+		m_ppBullets[h] = new CBulletObject(300.0f);
+		m_ppBullets[h]->SetScale(20, 20, 20);
 		m_ppBullets[h]->SetChild(pBulletModel);
-		m_ppBullets[h]->SetMovingSpeed(60.0f); 
+		m_ppBullets[h]->SetMovingSpeed(120.0f); 
 		m_ppBullets[h]->SetActive(false);
+		m_ppBullets[h]->CreateShaderVariables(pd3dDevice, pd3dCommandList);
 		pBulletModel->AddRef();
 	}
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
@@ -661,20 +661,32 @@ void CBulletShader::FireBullet(CPlayer* pPlayer)
 
 	if (pBulletObject)
 	{
-		XMFLOAT3 xmf3Position = pPlayer->GetPosition();
-		XMFLOAT3 xmf3Direction = pPlayer->GetLook();
-		XMFLOAT3 xmf3FirePosition = Vector3::Add(xmf3Position, Vector3::ScalarProduct(xmf3Direction, 10.0f, false));
+		XMFLOAT3 xmf3Position = ((CTankPlayer*)pPlayer)->GetTurret()->GetPosition();
+		XMFLOAT3 xmf3Direction = ((CTankPlayer*)pPlayer)->GetTurret()->GetLook();
+		XMFLOAT3 xmf3FirePosition = Vector3::Add(xmf3Position, Vector3::ScalarProduct(xmf3Direction, 9.0f, false));
+		xmf3FirePosition = Vector3::Add(xmf3Position, XMFLOAT3(0, 6, 0));
 
-//		pBulletObject->m_xmf4x4Transform = m_pTurretFrame->m_xmf4x4World;
-//		pBulletObject->m_fMovingDistance = 0;
-//		pBulletObject->SetFirePosition(xmf3FirePosition);
-//		pBulletObject->SetMovingDirection(xmf3Direction);
+		pBulletObject->m_xmf4x4Transform = ((CTankPlayer*)pPlayer)->m_pTurretFrame->m_xmf4x4World;
+		pBulletObject->m_fMovingDistance = 0;
+		pBulletObject->SetFirePosition(xmf3FirePosition);
+		pBulletObject->SetMovingDirection(xmf3Direction);
 		pBulletObject->SetActive(true);
+
+		XMFLOAT3 Ppos = pPlayer->GetPosition();
 	}
 }
 
 void CBulletShader::AnimateObjects(float fTimeElapsed)
 {
+	if (m_ppBullets)
+	{
+		for (int j = 0; j < BULLETS; j++) {
+			if (m_ppBullets[j]->m_bActive)
+			{
+				m_ppBullets[j]->Animate(fTimeElapsed);
+			}
+		}
+	}
 }
 
 void CBulletShader::ReleaseObjects()
@@ -699,9 +711,72 @@ void CBulletShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* 
 	{
 		if (m_ppBullets[j]->m_bActive) 
 		{
-//			m_ppBullets[j]->Animate(0.16f);
-			m_ppBullets[j]->UpdateTransform(NULL);
 			m_ppBullets[j]->Render(pd3dCommandList, pCamera);
+		}
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+
+CEnermyShader::CEnermyShader()
+{
+	m_nEnermies = ENERMY;
+	m_ppEnermies = new CTankObject * [m_nEnermies];
+}
+
+CEnermyShader::~CEnermyShader()
+{
+}
+
+std::default_random_engine dre;
+std::uniform_real_distribution<float> uid(0.0, 1000.0);
+void CEnermyShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, void* pContext)
+{
+	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 3);
+	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
+	CGameObject* pTankModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/TankFree_Red.bin", this);
+	for (int h = 0; h < m_nEnermies; h++)
+	{
+		m_ppEnermies[h] = new CTankObject();
+		m_ppEnermies[h]->SetChild(pTankModel);
+		m_ppEnermies[h]->SetScale(8, 8, 8);
+		m_ppEnermies[h]->CreateShaderVariables(pd3dDevice, pd3dCommandList);
+		pTankModel->AddRef();
+		XMFLOAT3 xmf3RandomPosition{ uid(dre),0,uid(dre) };
+		m_ppEnermies[h]->SetPosition(xmf3RandomPosition.x, pTerrain->GetHeight(xmf3RandomPosition.x, xmf3RandomPosition.z), xmf3RandomPosition.z);
+	}
+	CreateShaderVariables(pd3dDevice, pd3dCommandList);
+}
+
+void CEnermyShader::AnimateObjects(float fTimeElapsed)
+{
+}
+
+void CEnermyShader::ReleaseObjects()
+{
+	if (m_ppEnermies)
+	{
+		for (int j = 0; j < m_nEnermies; j++) if (m_ppEnermies[j]) m_ppEnermies[j]->Release();
+		delete[] m_ppEnermies;
+	}
+}
+
+void CEnermyShader::ReleaseUploadBuffers()
+{
+	for (int j = 0; j < m_nEnermies; j++) if (m_ppEnermies[j]) m_ppEnermies[j]->ReleaseUploadBuffers();
+}
+
+void CEnermyShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
+{
+	CShader::Render(pd3dCommandList, pCamera);
+
+	for (int j = 0; j < m_nEnermies; j++)
+	{
+		if (m_ppEnermies[j])
+		{
+			m_ppEnermies[j]->UpdateTransform(NULL);
+			m_ppEnermies[j]->Render(pd3dCommandList, pCamera);
 		}
 	}
 }

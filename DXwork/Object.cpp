@@ -333,7 +333,7 @@ CGameObject::~CGameObject()
 
 void CGameObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
 {
-	UpdateBoundingBox();
+	//UpdateBoundingBox();
 
 	if (m_pSibling) m_pSibling->Animate(fTimeElapsed, pxmf4x4Parent);
 	if (m_pChild) m_pChild->Animate(fTimeElapsed, &m_xmf4x4World);
@@ -961,16 +961,17 @@ void CTankObject::PrepareAnimate()
 	m_pTracksBackRightFrame = FindFrame("TankFree_Wheel_b_right");
 }
 
-//void CTankObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
-//{
-//	CGameObject::Animate(fTimeElapsed, pxmf4x4Parent);
-//}
+void CTankObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
+{
+	CGameObject::Animate(fTimeElapsed, pxmf4x4Parent);
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 
-CBulletObject::CBulletObject() : CGameObject(0, 0)
+CBulletObject::CBulletObject(float fEffectiveRange) : CGameObject(0, 0)
 {
+	m_fBulletEffectiveRange = fEffectiveRange;
 }
 
 CBulletObject::~CBulletObject()
@@ -983,11 +984,50 @@ void CBulletObject::PrepareAnimate()
 
 void CBulletObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
 {
+	m_fElapsedTimeAfterFire += fTimeElapsed;
+	m_fElapsedTimeAfterFire += fTimeElapsed;
+
+	float fDistance = m_fMovingSpeed * fTimeElapsed;
+
+	XMFLOAT3 xmf3Position = GetPosition();
+	if ((m_fElapsedTimeAfterFire > m_fLockingDelayTime) && m_pLockedObject)
+	{
+		XMVECTOR xmvPosition = XMLoadFloat3(&xmf3Position);
+
+		XMFLOAT3 xmf3LockedObjectPosition = m_pLockedObject->GetPosition();
+		XMVECTOR xmvLockedObjectPosition = XMLoadFloat3(&xmf3LockedObjectPosition);
+		XMVECTOR xmvToLockedObject = xmvLockedObjectPosition - xmvPosition;
+		xmvToLockedObject = XMVector3Normalize(xmvToLockedObject);
+
+		XMVECTOR xmvMovingDirection = XMLoadFloat3(&m_xmf3MovingDirection);
+		xmvMovingDirection = XMVector3Normalize(XMVectorLerp(xmvMovingDirection, xmvToLockedObject, 0.125f));
+		XMStoreFloat3(&m_xmf3MovingDirection, xmvMovingDirection);
+	}
+	XMStoreFloat3(&xmf3Position, XMLoadFloat3(&xmf3Position) + (XMLoadFloat3(&m_xmf3MovingDirection) * fDistance));
+	m_xmf4x4Transform._41 = xmf3Position.x; m_xmf4x4Transform._42 = xmf3Position.y; m_xmf4x4Transform._43 = xmf3Position.z;
+	m_fMovingDistance += fDistance;
+
+	UpdateTransform();
 	CGameObject::Animate(fTimeElapsed, pxmf4x4Parent);
+
+	if ((m_fMovingDistance > m_fBulletEffectiveRange) || (m_fElapsedTimeAfterFire > m_fLockingTime)) Reset();
+	
+	std::cout << "Bullet Pos(" << m_xmf4x4World._41 << ", "
+		<< m_xmf4x4World._42 << ", "
+		<< m_xmf4x4World._43 << ")" << std::endl;
 }
 
 void CBulletObject::SetFirePosition(XMFLOAT3 xmf3FirePosition)
 {
 	m_xmf3FirePosition = xmf3FirePosition;
 	SetPosition(xmf3FirePosition);
+}
+
+void CBulletObject::Reset()
+{
+	m_pLockedObject = NULL;
+	m_fElapsedTimeAfterFire = 0;
+	m_fMovingDistance = 0;
+
+	m_bActive = false;
 }

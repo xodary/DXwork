@@ -369,12 +369,12 @@ void CGameFramework::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPA
 		case 'a':
 		case 'A':
 		case VK_LEFT:
-			((CTankPlayer*)m_pPlayer)->m_fwheelRotationY = -30;
+			((CTankPlayer*)m_pPlayer)->m_fwheelRotationY = -50;
 			break;
 		case 'd':
 		case 'D':
 		case VK_RIGHT:
-			((CTankPlayer*)m_pPlayer)->m_fwheelRotationY = 30;
+			((CTankPlayer*)m_pPlayer)->m_fwheelRotationY = 50;
 			break;
 		case VK_SPACE:
 			((CBulletShader*)(m_pScene->m_ppShaders[0]))->FireBullet(m_pPlayer);
