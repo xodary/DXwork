@@ -484,14 +484,43 @@ void CGameObject::SetChild(CGameObject* pChild)
 
 void CGameObject::SetPosition(float x, float y, float z)
 {
-	m_xmf4x4World._41 = x;
-	m_xmf4x4World._42 = y;
-	m_xmf4x4World._43 = z;
+	m_xmf4x4Transform._41 = x;
+	m_xmf4x4Transform._42 = y;
+	m_xmf4x4Transform._43 = z;
+
+	UpdateTransform(NULL);
 }
 
 void CGameObject::SetPosition(XMFLOAT3 xmf3Position)
 {
 	SetPosition(xmf3Position.x, xmf3Position.y, xmf3Position.z);
+}
+
+void CGameObject::SetRight(XMFLOAT3 xmf3Right)
+{
+	m_xmf4x4Transform._11 = xmf3Right.x;
+	m_xmf4x4Transform._12 = xmf3Right.y;
+	m_xmf4x4Transform._13 = xmf3Right.z;
+
+	UpdateTransform(NULL);
+}
+
+void CGameObject::SetUp(XMFLOAT3 xmf3Up)
+{
+	m_xmf4x4Transform._21 = xmf3Up.x;
+	m_xmf4x4Transform._22 = xmf3Up.y;
+	m_xmf4x4Transform._23 = xmf3Up.z;
+
+	UpdateTransform(NULL);
+}
+
+void CGameObject::SetLook(XMFLOAT3 xmf3Look)
+{
+	m_xmf4x4Transform._31 = xmf3Look.x;
+	m_xmf4x4Transform._32 = xmf3Look.y;
+	m_xmf4x4Transform._33 = xmf3Look.z;
+
+	UpdateTransform(NULL);
 }
 
 void CGameObject::SetScale(float x, float y, float z)
@@ -942,9 +971,11 @@ CRippleWater::~CRippleWater()
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
+// CTankObject
+
 CTankObject::CTankObject() : CGameObject(0,0)
 {
+	m_fMovingSpeed = 10.0f;
 }
 
 CTankObject::~CTankObject()
@@ -953,21 +984,47 @@ CTankObject::~CTankObject()
 
 void CTankObject::PrepareAnimate()
 {
-	m_pBodyFrame = FindFrame("TankFree_Blue");
-	m_pTurretFrame = FindFrame("TankFree_Tower");
-	m_pTracksFrontLeftFrame = FindFrame("TankFree_Wheel_f_left");
-	m_pTracksFrontRightFrame = FindFrame("TankFree_Wheel_f_right");
-	m_pTracksBackLeftFrame = FindFrame("TankFree_Wheel_b_left");
-	m_pTracksBackRightFrame = FindFrame("TankFree_Wheel_b_right");
+	//m_pBodyFrame = FindFrame("TankFree_Blue");
+	//m_pTurretFrame = FindFrame("TankFree_Tower");
+	//m_pTracksFrontLeftFrame = FindFrame("TankFree_Wheel_f_left");
+	//m_pTracksFrontRightFrame = FindFrame("TankFree_Wheel_f_right");
+	//m_pTracksBackLeftFrame = FindFrame("TankFree_Wheel_b_left");
+	//m_pTracksBackRightFrame = FindFrame("TankFree_Wheel_b_right");
 }
 
-void CTankObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
+void CTankObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent, CPlayer* pPlayer)
 {
+	if (Vector3::Length(Vector3::Subtract(GetPosition(), ((CGameObject*)pPlayer)->GetPosition())) > 20)
+		SetPosition(Vector3::Add(GetPosition(), GetLook(), m_fMovingSpeed * fTimeElapsed));
+
 	CGameObject::Animate(fTimeElapsed, pxmf4x4Parent);
+
+	XMFLOAT3 xmf3Scale = m_pTerrain->GetScale();
+	XMFLOAT3 xmf3PlayerPosition = GetPosition();
+	int z = (int)(xmf3PlayerPosition.z / xmf3Scale.z);
+	bool bReverseQuad = ((z % 2) != 0);
+	float fHeight = m_pTerrain->GetHeight(xmf3PlayerPosition.x, xmf3PlayerPosition.z, bReverseQuad) + 6.0f;
+	XMFLOAT3 xmf3Normal = m_pTerrain->GetNormal(xmf3PlayerPosition.x, xmf3PlayerPosition.z);
+	XMFLOAT3 xmf3Look = Vector3::Subtract(((CGameObject*)pPlayer)->GetPosition(), GetPosition());
+	xmf3Look = Vector3::Normalize(XMFLOAT3(xmf3Look.x, 0.0f, xmf3Look.z));
+	XMFLOAT3 xmf3Right = GetRight();
+
+	XMStoreFloat3(&xmf3Right, XMVector3Cross(XMLoadFloat3(&xmf3Normal), XMLoadFloat3(&xmf3Look)));
+	XMStoreFloat3(&xmf3Look, XMVector3Cross(XMLoadFloat3(&xmf3Right), XMLoadFloat3(&xmf3Normal)));
+
+	XMFLOAT4X4 xmf4x4RUL = Matrix4x4::Identity();
+	xmf4x4RUL._11 = xmf3Right.x; xmf4x4RUL._12 = xmf3Right.y; xmf4x4RUL._13 = xmf3Right.z;
+	xmf4x4RUL._21 = xmf3Normal.x; xmf4x4RUL._22 = xmf3Normal.y; xmf4x4RUL._23 = xmf3Normal.z;
+	xmf4x4RUL._31 = xmf3Look.x; xmf4x4RUL._32 = xmf3Look.y; xmf4x4RUL._33 = xmf3Look.z;
+	m_xmf4x4Transform = Matrix4x4::Multiply(xmf4x4RUL, XMMatrixScaling(p_fScale, p_fScale, p_fScale));
+	xmf3PlayerPosition.y = fHeight;
+	SetPosition(xmf3PlayerPosition);
+	UpdateTransform();
 }
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
+// CBulletObject
 
 CBulletObject::CBulletObject(float fEffectiveRange) : CGameObject(0, 0)
 {
@@ -1003,7 +1060,8 @@ void CBulletObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
 		xmvMovingDirection = XMVector3Normalize(XMVectorLerp(xmvMovingDirection, xmvToLockedObject, 0.125f));
 		XMStoreFloat3(&m_xmf3MovingDirection, xmvMovingDirection);
 	}
-	XMStoreFloat3(&xmf3Position, XMLoadFloat3(&xmf3Position) + (XMLoadFloat3(&m_xmf3MovingDirection) * fDistance));
+	Rotate(60 * fTimeElapsed, 0, 0);
+	XMStoreFloat3(&xmf3Position, XMLoadFloat3(&xmf3Position) + (XMLoadFloat3(&GetLook()) * fDistance));
 	m_xmf4x4Transform._41 = xmf3Position.x; m_xmf4x4Transform._42 = xmf3Position.y; m_xmf4x4Transform._43 = xmf3Position.z;
 	m_fMovingDistance += fDistance;
 

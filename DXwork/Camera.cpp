@@ -312,11 +312,21 @@ void CThirdPersonCamera::Update(XMFLOAT3& xmf3LookAt, float fTimeElapsed)
 		if (turret) 
 		{
 			XMFLOAT4X4 xmf4x4Rotate = Matrix4x4::Identity();
-			XMFLOAT3 xmf3TurretLook = turret->GetLook();
-			XMFLOAT3 xmf3BodyLook	= m_pPlayer->GetLook();
-			float a = XMVectorGetX(XMLoadFloat3(&((CTankPlayer*)m_pPlayer)->GetTurret()->GetLook()));
-			
-			XMStoreFloat4x4(&xmf4x4Rotate, XMMatrixRotationY(a));
+			XMFLOAT3 v1 = turret->GetLook();
+			v1 = XMFLOAT3(v1.x, 0.0f, v1.z);
+			float bbb = atan2(v1.z, v1.x);
+			float radian = XMConvertToRadians(90.0f) - bbb;
+			XMFLOAT3 v2 = m_xmf3Look;
+			v2 = XMFLOAT3(v2.x, 0.0f, v2.z);
+			float aaa = atan2(v2.z, v2.x);
+			float radian2 = XMConvertToRadians(90.0f) - aaa;
+			XMStoreFloat4x4(&xmf4x4Rotate, XMMatrixRotationY(radian));
+			float theta = XMConvertToDegrees(aaa - bbb);
+			if (theta > 180) theta -= 360;
+			if (theta < -180) theta += 360;
+				if (abs(theta) > 1) {
+					Rotate(0, theta * fTimeElapsed, 0, true);
+				}
 
 			XMFLOAT3 xmf3Offset		= Vector3::TransformCoord(m_xmf3Offset, xmf4x4Rotate);
 			XMFLOAT3 xmf3Position	= Vector3::Add(m_pPlayer->GetPosition(), xmf3Offset);
@@ -327,11 +337,9 @@ void CThirdPersonCamera::Update(XMFLOAT3& xmf3LookAt, float fTimeElapsed)
 			float fDistance = fLength * fTimeLagScale;
 			if (fDistance > fLength) fDistance = fLength;
 			if (fLength < 0.01f) fDistance = fLength;
-			if (fDistance >= 0)
+			if (fDistance > 0)
 			{
 				m_xmf3Position = Vector3::Add(m_xmf3Position, xmf3Direction, fDistance);
-				std::cout << "angleInDegrees: " << XMConvertToDegrees(a) << " / Offset : (" << xmf3Direction.x << ", " << xmf3Direction.y << ", " << xmf3Direction.z << ")" << std::endl;
-				//SetLookAt(xmf3LookAt);
 			}
 		}
 	}

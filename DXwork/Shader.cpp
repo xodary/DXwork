@@ -637,7 +637,7 @@ void CBulletShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommand
 	for (int h = 0; h < BULLETS; h++)
 	{
 		m_ppBullets[h] = new CBulletObject(300.0f);
-		m_ppBullets[h]->SetScale(20, 20, 20);
+		m_ppBullets[h]->m_fScale = 2.0f;
 		m_ppBullets[h]->SetChild(pBulletModel);
 		m_ppBullets[h]->SetMovingSpeed(120.0f); 
 		m_ppBullets[h]->SetActive(false);
@@ -666,7 +666,7 @@ void CBulletShader::FireBullet(CPlayer* pPlayer)
 		XMFLOAT3 xmf3FirePosition = Vector3::Add(xmf3Position, Vector3::ScalarProduct(xmf3Direction, 9.0f, false));
 		xmf3FirePosition = Vector3::Add(xmf3Position, XMFLOAT3(0, 6, 0));
 
-		pBulletObject->m_xmf4x4Transform = ((CTankPlayer*)pPlayer)->m_pTurretFrame->m_xmf4x4World;
+		pBulletObject->m_xmf4x4Transform = Matrix4x4::Multiply(XMMatrixScaling(pBulletObject->m_fScale, pBulletObject->m_fScale, pBulletObject->m_fScale), ((CTankPlayer*)pPlayer)->m_pTurretFrame->m_xmf4x4World);
 		pBulletObject->m_fMovingDistance = 0;
 		pBulletObject->SetFirePosition(xmf3FirePosition);
 		pBulletObject->SetMovingDirection(xmf3Direction);
@@ -740,9 +740,8 @@ void CEnermyShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommand
 	{
 		m_ppEnermies[h] = new CTankObject();
 		m_ppEnermies[h]->SetChild(pTankModel);
-		m_ppEnermies[h]->SetScale(8, 8, 8);
 		m_ppEnermies[h]->CreateShaderVariables(pd3dDevice, pd3dCommandList);
-		pTankModel->AddRef();
+		m_ppEnermies[h]->m_pTerrain = (CHeightMapTerrain*)pContext;
 		XMFLOAT3 xmf3RandomPosition{ uid(dre),0,uid(dre) };
 		m_ppEnermies[h]->SetPosition(xmf3RandomPosition.x, pTerrain->GetHeight(xmf3RandomPosition.x, xmf3RandomPosition.z), xmf3RandomPosition.z);
 	}
@@ -751,6 +750,11 @@ void CEnermyShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommand
 
 void CEnermyShader::AnimateObjects(float fTimeElapsed)
 {
+	for (int j = 0; j < m_nEnermies; j++) {
+		if (m_ppEnermies[j]) {
+			m_ppEnermies[j]->Animate(fTimeElapsed, NULL, m_pPlayer);
+		}
+	}
 }
 
 void CEnermyShader::ReleaseObjects()

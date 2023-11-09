@@ -245,6 +245,7 @@ void CScene::PrepareRender(ID3D12GraphicsCommandList* pd3dCommandList)
 
 void CScene::AnimateObjects(float fTimeElapsed)
 {
+	((CEnermyShader*)m_ppShaders[1])->m_pPlayer = m_pPlayer;
 	for (int i = 0; i < m_nShaders; i++)
 	{
 		if (m_ppShaders[i])

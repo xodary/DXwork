@@ -172,6 +172,9 @@ public:
 	void SetChild(CGameObject* pChild);
 	void SetPosition(float x, float y, float z);
 	void SetPosition(XMFLOAT3 xmf3Position);
+	void SetRight(XMFLOAT3 xmf3Right);
+	void SetUp(XMFLOAT3 xmf3Up);
+	void SetLook(XMFLOAT3 xmf3Look);
 	void SetScale(float x, float y, float z);
 	void SetBoundingBoxMesh(int nIndex, CBoundingBoxMesh* pMesh);
 	void SetMovingDirection(XMFLOAT3& xmf3MovingDirection) { m_xmf3MovingDirection = Vector3::Normalize(xmf3MovingDirection); }
@@ -307,6 +310,7 @@ public:
 	float						m_fLockingDelayTime = 0.3f;
 	float						m_fMovingDistance = 0.0f;
 	float						m_fLockingTime = 40.0f;
+	float						m_fScale;
 	CGameObject					*m_pLockedObject = NULL;
 
 	CBulletObject(float fEffectiveRange);
@@ -329,9 +333,12 @@ public:
 	CGameObject					*m_pTracksBackRightFrame;
 	CGameObject					*m_pTracksFrontLeftFrame;
 	CGameObject					*m_pTracksFrontRightFrame;
+	CHeightMapTerrain			*m_pTerrain;
+	float						p_fScale = 8.f;
 
 	CTankObject();
 	virtual ~CTankObject();
-	virtual void Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent);
+	virtual void Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent=NULL, CPlayer* pPlayer=NULL);
 	virtual void PrepareAnimate();
+	void SetUpByTurret(CPlayer* pPlayer);
 };

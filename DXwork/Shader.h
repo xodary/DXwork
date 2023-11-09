@@ -211,7 +211,7 @@ public:
 	virtual void ReleaseUploadBuffers();
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
 
-protected:
 	CTankObject						**m_ppEnermies;
+	CPlayer							*m_pPlayer;
 	int								m_nEnermies;
 };
