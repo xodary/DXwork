@@ -314,14 +314,14 @@ void CThirdPersonCamera::Update(XMFLOAT3& xmf3LookAt, float fTimeElapsed)
 			XMFLOAT4X4 xmf4x4Rotate = Matrix4x4::Identity();
 			XMFLOAT3 v1 = turret->GetLook();
 			v1 = XMFLOAT3(v1.x, 0.0f, v1.z);
-			float bbb = atan2(v1.z, v1.x);
-			float radian = XMConvertToRadians(90.0f) - bbb;
+			float v1R = atan2(v1.z, v1.x);
+			float radian = XMConvertToRadians(90.0f) - v1R;
 			XMFLOAT3 v2 = m_xmf3Look;
 			v2 = XMFLOAT3(v2.x, 0.0f, v2.z);
-			float aaa = atan2(v2.z, v2.x);
-			float radian2 = XMConvertToRadians(90.0f) - aaa;
+			float v2R = atan2(v2.z, v2.x);
+			float radian2 = XMConvertToRadians(90.0f) - v2R;
 			XMStoreFloat4x4(&xmf4x4Rotate, XMMatrixRotationY(radian));
-			float theta = XMConvertToDegrees(aaa - bbb);
+			float theta = XMConvertToDegrees(v2R - v1R);
 			if (theta > 180) theta -= 360;
 			if (theta < -180) theta += 360;
 				if (abs(theta) > 1) {

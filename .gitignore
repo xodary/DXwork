@@ -1,0 +1,8 @@
+x64/
+DXwork/x64/
+
+*.text
+*.exe
+*.zip
+*.dds
+*.ipch

@@ -820,14 +820,6 @@ CGameObject* CGameObject::FindFrame(char* pstrFrameName)
 	return(NULL);
 }
 
-void CGameObject::SetLookAt(XMFLOAT3& xmf3Target, XMFLOAT3& xmf3Up)
-{
-	XMFLOAT3 xmf3Position(m_xmf4x4World._41, m_xmf4x4World._42, m_xmf4x4World._43);
-	XMFLOAT4X4 mtxLookAt = Matrix4x4::LookAtLH(xmf3Position, xmf3Target, xmf3Up);
-	m_xmf4x4World._11 = mtxLookAt._11; m_xmf4x4World._12 = mtxLookAt._21; m_xmf4x4World._13 = mtxLookAt._31;
-	m_xmf4x4World._21 = mtxLookAt._12; m_xmf4x4World._22 = mtxLookAt._22; m_xmf4x4World._23 = mtxLookAt._32;
-	m_xmf4x4World._31 = mtxLookAt._13; m_xmf4x4World._32 = mtxLookAt._23; m_xmf4x4World._33 = mtxLookAt._33;
-}
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 
 CSkyBox::CSkyBox(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature) : CGameObject(1, 1)
@@ -1004,7 +996,6 @@ void CTankObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent, CPlayer
 {
 	if (Vector3::Length(Vector3::Subtract(GetPosition(), ((CGameObject*)pPlayer)->GetPosition())) > 20)
 		SetPosition(Vector3::Add(GetPosition(), GetLook(), m_fMovingSpeed * fTimeElapsed));
-
 	CGameObject::Animate(fTimeElapsed, pxmf4x4Parent);
 
 	XMFLOAT3 xmf3Scale = m_pTerrain->GetScale();
@@ -1068,7 +1059,7 @@ void CBulletObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
 		xmvMovingDirection = XMVector3Normalize(XMVectorLerp(xmvMovingDirection, xmvToLockedObject, 0.125f));
 		XMStoreFloat3(&m_xmf3MovingDirection, xmvMovingDirection);
 	}
-	Rotate(60 * fTimeElapsed, 0, 0);
+	Rotate(30 * fTimeElapsed, 0, 0);
 	XMStoreFloat3(&xmf3Position, XMLoadFloat3(&xmf3Position) + (XMLoadFloat3(&GetLook()) * fDistance));
 	m_xmf4x4Transform._41 = xmf3Position.x; m_xmf4x4Transform._42 = xmf3Position.y; m_xmf4x4Transform._43 = xmf3Position.z;
 	m_fMovingDistance += fDistance;
@@ -1092,23 +1083,4 @@ void CBulletObject::Reset()
 	m_fMovingDistance = 0;
 
 	m_bActive = false;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// 
-CGrassObject::CGrassObject() : CGameObject(1, 1)
-{
-}
-
-CGrassObject::~CGrassObject()
-{
-}
-
-void CGrassObject::Animate(float fTimeElapsed)
-{
-	if (m_fRotationAngle <= -1.5f) m_fRotationDelta = 1.0f;
-	if (m_fRotationAngle >= +1.5f) m_fRotationDelta = -1.0f;
-	m_fRotationAngle += m_fRotationDelta * fTimeElapsed;
-
-	Rotate(0.0f, 0.0f, m_fRotationAngle);
 }

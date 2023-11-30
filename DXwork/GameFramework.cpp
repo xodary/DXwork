@@ -494,11 +494,11 @@ void CGameFramework::ProcessInput()
 				fAngle = -fAngle;
 			}
 			if (dwDirection & DIR_BACKWARD) {
-				xmf3Shift = Vector3::Add(xmf3Shift, m_pPlayer->GetLook(), 1.f);
+				xmf3Shift = Vector3::Add(xmf3Shift, m_pPlayer->GetLook(), 0.5f);
 				m_pPlayer->Rotate(0, fAngle, 0, false);
 			}
 			if (dwDirection & DIR_FORWARD) {
-				xmf3Shift = Vector3::Add(xmf3Shift, m_pPlayer->GetLook(), -1.f);
+				xmf3Shift = Vector3::Add(xmf3Shift, m_pPlayer->GetLook(), -0.5f);
 				m_pPlayer->Rotate(0, -fAngle, 0, false);
 			}
 			m_pPlayer->m_xmf3Velocity = Vector3::Add(m_pPlayer->m_xmf3Velocity, xmf3Shift);

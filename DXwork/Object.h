@@ -64,11 +64,7 @@ private:
 
 	int								m_nSamplers = 0;
 	D3D12_GPU_DESCRIPTOR_HANDLE		*m_pd3dSamplerGpuDescriptorHandles = NULL;
-public:
-	int 							m_nRows = 1;
-	int 							m_nCols = 1;
 
-	XMFLOAT4X4						m_xmf4x4Texture;
 
 public:
 
@@ -182,7 +178,7 @@ public:
 	void SetScale(float x, float y, float z);
 	void SetBoundingBoxMesh(int nIndex, CBoundingBoxMesh* pMesh);
 	void SetMovingDirection(XMFLOAT3& xmf3MovingDirection) { m_xmf3MovingDirection = Vector3::Normalize(xmf3MovingDirection); }
-	void SetLookAt(XMFLOAT3& xmf3Target, XMFLOAT3& xmf3Up);
+	
 	void Rotate(float fPitch = 10.0f, float fYaw = 10.0f, float fRoll = 10.0f, XMFLOAT4X4* parent=NULL);
 	void Rotate(XMFLOAT3* pxmf3Axis, float fAngle);
 	void Rotate(XMFLOAT4* pxmf4Quaternion);
@@ -345,18 +341,4 @@ public:
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent=NULL, CPlayer* pPlayer=NULL);
 	virtual void PrepareAnimate();
 	void SetUpByTurret(CPlayer* pPlayer);
-};
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-class CGrassObject : public CGameObject
-{
-public:
-	CGrassObject();
-	virtual ~CGrassObject();
-
-	virtual void Animate(float fTimeElapsed);
-
-	float m_fRotationAngle = 0.0f;
-	float m_fRotationDelta = 1.0f;
 };

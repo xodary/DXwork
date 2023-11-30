@@ -153,29 +153,7 @@ public:
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-
-class CRawFormatImage
-{
-protected:
-	BYTE						*m_pRawImagePixels = NULL;
-
-	int							m_nWidth;
-	int							m_nLength;
-
-public:
-	CRawFormatImage(LPCTSTR pFileName, int nWidth, int nLength, bool bFlipY = false);
-	~CRawFormatImage(void);
-
-	BYTE GetRawImagePixel(int x, int z) { return(m_pRawImagePixels[x + (z * m_nWidth)]); }
-	void SetRawImagePixel(int x, int z, BYTE nPixel) { m_pRawImagePixels[x + (z * m_nWidth)] = nPixel; }
-
-	BYTE* GetRawImagePixels() { return(m_pRawImagePixels); }
-
-	int GetRawImageWidth() { return(m_nWidth); }
-	int GetRawImageLength() { return(m_nLength); }
-};
-
-class CHeightMapImage : public CRawFormatImage
+class CHeightMapImage
 {
 private:
 	BYTE* m_pHeightMapPixels;
@@ -296,13 +274,4 @@ public:
 	XMFLOAT3* m_pcbMappedPositions = NULL;
 
 	void UpdateVertexPosition(BoundingOrientedBox* pxmBoundingBox);
-};
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-class CTexturedRectMesh : public CMesh
-{
-public:
-	CTexturedRectMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, float fWidth = 20.0f, float fHeight = 20.0f, float fDepth = 20.0f, float fxPosition = 0.0f, float fyPosition = 0.0f, float fzPosition = 0.0f);
-	virtual ~CTexturedRectMesh();
 };

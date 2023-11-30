@@ -66,44 +66,12 @@ float4 PSPlayer(VS_DIFFUSED_OUTPUT input) : SV_TARGET
 	return(input.color);
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-Texture2D gtxtTexture : register(t15);
-SamplerState gSamplerState : register(s0);
-
-struct VS_TEXTURED_INPUT
-{
-    float3 position : POSITION;
-    float2 uv : TEXCOORD;
-};
-
-struct VS_TEXTURED_OUTPUT
-{
-    float4 position : SV_POSITION;
-    float2 uv : TEXCOORD;
-};
-
-VS_TEXTURED_OUTPUT VSTextured(VS_TEXTURED_INPUT input)
-{
-    VS_TEXTURED_OUTPUT output;
-
-    output.position = mul(mul(mul(float4(input.position, 1.0f), gmtxPlayerWorld), gmtxView), gmtxProjection);
-    output.uv = input.uv;
-
-    return (output);
-}
-
-float4 PSTextured(VS_TEXTURED_OUTPUT input) : SV_TARGET
-{
-    float4 cColor = gtxtTexture.Sample(gSamplerState, input.uv);
-
-    return (cColor);
-}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 
 TextureCube gtxtSkyCubeTexture : register(t0);
+SamplerState gSamplerState : register(s0);
 SamplerState gssClamp : register(s1);
 
 struct VS_SKYBOX_CUBEMAP_INPUT

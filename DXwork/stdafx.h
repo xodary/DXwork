@@ -16,19 +16,18 @@
 #define PARAMETER_TIME 6
 #define PARAMETER_ANIMATION 7
 #define PARAMETER_STANDARD_TEXTURE 8
-#define PARAMETER_2DTEXTURE 15
 
 #define WIN32_LEAN_AND_MEAN             // 거의 사용되지 않는 내용은 Windows 헤더에서 제외합니다.
 // Windows 헤더 파일:
 #include <windows.h>
 #pragma comment(linker, "/entry:wWinMainCRTStartup /subsystem:console")
 #include <iostream>
+#include <random>
 // C의 런타임 헤더 파일입니다.
 #include <stdlib.h>
 #include <malloc.h>
 #include <tchar.h>
 #include <math.h>
-#include <random>
 #include <string>
 #include <shellapi.h>
 
@@ -54,8 +53,8 @@ using namespace DirectX::PackedVector;
 
 using Microsoft::WRL::ComPtr;
 
-#define FRAME_BUFFER_WIDTH		500
-#define FRAME_BUFFER_HEIGHT		500
+#define FRAME_BUFFER_WIDTH		1000
+#define FRAME_BUFFER_HEIGHT		1000
 
 //#define _WITH_CB_GAMEOBJECT_32BIT_CONSTANTS
 //#define _WITH_CB_GAMEOBJECT_ROOT_DESCRIPTOR
