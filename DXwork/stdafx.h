@@ -53,8 +53,8 @@ using namespace DirectX::PackedVector;
 
 using Microsoft::WRL::ComPtr;
 
-#define FRAME_BUFFER_WIDTH		1000
-#define FRAME_BUFFER_HEIGHT		1000
+#define FRAME_BUFFER_WIDTH		500
+#define FRAME_BUFFER_HEIGHT		500
 
 //#define _WITH_CB_GAMEOBJECT_32BIT_CONSTANTS
 //#define _WITH_CB_GAMEOBJECT_ROOT_DESCRIPTOR

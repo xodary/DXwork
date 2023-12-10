@@ -100,5 +100,7 @@ private:
 
 	ID3D12Resource*				m_pd3dcbTime = NULL;
 	VS_CB_TIME_INFO*			m_pcbMappedTime = NULL;
+
+	bool						m_bRenderBoundingBox = false;
 };
 

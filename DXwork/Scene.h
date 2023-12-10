@@ -16,7 +16,10 @@ public:
 	virtual void UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList);
 	virtual void ReleaseShaderVariables();
 
+	bool CheckObjectByObjectCollisions(CGameObject* pTargetGameObject);
+
 	void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
+	void AddCollisionObject(CShader* pShader);
 	ID3D12RootSignature* CreateGraphicsRootSignature(ID3D12Device* pd3dDevice);
 	void PrepareRender(ID3D12GraphicsCommandList* pd3dCommandList);
 	ID3D12RootSignature* GetGraphicsRootSignature() { return(m_pd3dGraphicsRootSignature); }
@@ -43,5 +46,8 @@ public:
 
 	int							m_nShaders = 0;
 	CShader						**m_ppShaders = NULL;
+
+	CGameObject					**m_ppCollisionObjects = NULL;
+	int							m_nCollisionObject = 0;
 
 };

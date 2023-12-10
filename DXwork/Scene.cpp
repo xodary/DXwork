@@ -50,6 +50,25 @@ void CScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* p
 	pTreeShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
 	pTreeShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, m_pTerrain);
 	m_ppShaders[2] = pTreeShader;
+	AddCollisionObject(pTreeShader);
+}
+
+void CScene::AddCollisionObject(CShader* pShader)
+{
+	int newObjects = pShader->m_nObject;
+	CGameObject** ppCollisionObjects = new CGameObject * [m_nCollisionObject + newObjects];
+	for (int i = 0; i < m_nCollisionObject; ++i)
+	{
+		ppCollisionObjects[i] = m_ppCollisionObjects[i];
+	}
+	for (int i = 0; i < newObjects; ++i)
+	{
+		ppCollisionObjects[m_nCollisionObject + i] = pShader->m_ppObjects[i];
+	}
+	m_nCollisionObject += newObjects;
+	m_ppCollisionObjects = ppCollisionObjects;
+
+	std::cout << "충돌처리 할 Object갯수 : " << m_nCollisionObject << std::endl;
 }
 
 ID3D12RootSignature* CScene::CreateGraphicsRootSignature(ID3D12Device* pd3dDevice)
@@ -280,6 +299,13 @@ void CScene::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera
 
 void CScene::RenderBoundingBox(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
 {
+	m_pBoundingBoxShader->Render(pd3dCommandList, pCamera);
+	for (int i = 0; i < m_nCollisionObject; i++)
+	{
+		if (m_ppCollisionObjects[i]) m_ppCollisionObjects[i]->RenderBoundingBox(pd3dCommandList, pCamera);
+	}
+
+	m_pPlayer->RenderBoundingBox(pd3dCommandList, pCamera);
 }
 
 void CScene::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
@@ -308,4 +334,17 @@ void CScene::ReleaseShaderVariables()
 	if (m_pTerrainWater) m_pTerrainWater->ReleaseShaderVariables();
 
 	for (int i = 0; i < m_nShaders; i++) if (m_ppShaders[i]) m_ppShaders[i]->ReleaseShaderVariables();
+}
+
+bool CScene::CheckObjectByObjectCollisions(CGameObject* pTargetGameObject)
+{
+	for (int i = 0; i < m_nCollisionObject; i++)
+	{
+		for (int p = 0; p < m_ppCollisionObjects[i]->m_nMeshes; ++p) {
+			for (int q = 0; q < pTargetGameObject->m_nMeshes; ++q) {
+				if (m_ppCollisionObjects[i]->m_pxmBoundingBoxes[p].Intersects(pTargetGameObject->m_pxmBoundingBoxes[q])) return(true);
+			}
+		}
+	}
+	return(false);
 }

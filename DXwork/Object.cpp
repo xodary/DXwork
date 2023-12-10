@@ -287,6 +287,8 @@ CGameObject::CGameObject(int nMeshes, int nMaterials)
 	m_nMeshes = nMeshes;
 	m_ppMeshes = NULL;
 	m_ppBoundingBoxMeshes = NULL;
+	m_pxmBoundingBoxes = NULL;
+
 	if (m_nMeshes > 0)
 	{
 		m_ppMeshes = new CMesh * [m_nMeshes];
@@ -307,6 +309,9 @@ CGameObject::CGameObject(int nMeshes, int nMaterials)
 
 CGameObject::~CGameObject()
 {
+	delete m_pxmBoundingBoxes;
+	m_pxmBoundingBoxes = NULL;
+
 	if (m_ppMeshes)
 	{
 		for (int i = 0; i < m_nMeshes; i++)
@@ -558,7 +563,7 @@ void CGameObject::Rotate(XMFLOAT4* pxmf4Quaternion)
 void CGameObject::UpdateBoundingBox()
 {
 	OnPrepareRender();
-	for (int i = 0; i < m_nMaterials; ++i) {
+	for (int i = 0; i < m_nMeshes; ++i) {
 		m_ppMeshes[i]->m_xmBoundingBox.Transform(m_pxmBoundingBoxes[i], XMLoadFloat4x4(&m_xmf4x4World));
 		XMStoreFloat4(&m_pxmBoundingBoxes[i].Orientation, XMQuaternionNormalize(XMLoadFloat4(&m_pxmBoundingBoxes[i].Orientation)));
 	}

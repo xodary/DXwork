@@ -622,7 +622,7 @@ void CBoundingBoxShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCam
 //
 CBulletShader::CBulletShader()
 {
-	m_ppBullets = new CBulletObject * [BULLETS];
+	m_ppObjects = new CGameObject * [BULLETS];
 }
 
 CBulletShader::~CBulletShader()
@@ -636,12 +636,12 @@ void CBulletShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommand
 	for (int h = 0; h < BULLETS; h++)
 	{
 		CGameObject* pBulletModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/¬³TF_Missile_Blue.bin", this);
-		m_ppBullets[h] = new CBulletObject(300.0f);
-		m_ppBullets[h]->m_fScale = 2.0f;
-		m_ppBullets[h]->SetChild(pBulletModel);
-		m_ppBullets[h]->SetMovingSpeed(120.0f); 
-		m_ppBullets[h]->SetActive(false);
-		m_ppBullets[h]->CreateShaderVariables(pd3dDevice, pd3dCommandList);
+		m_ppObjects[h] = new CBulletObject(300.0f);
+		((CBulletObject*)m_ppObjects[h])->m_fScale = 2.0f;
+		m_ppObjects[h]->SetChild(pBulletModel);
+		m_ppObjects[h]->SetMovingSpeed(120.0f);
+		m_ppObjects[h]->SetActive(false);
+		m_ppObjects[h]->CreateShaderVariables(pd3dDevice, pd3dCommandList);
 		pBulletModel->AddRef();
 	}
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
@@ -652,9 +652,9 @@ void CBulletShader::FireBullet(CPlayer* pPlayer)
 	CBulletObject* pBulletObject = NULL;
 	for (int i = 0; i < BULLETS; i++)
 	{
-		if (!m_ppBullets[i]->m_bActive)
+		if (!m_ppObjects[i]->m_bActive)
 		{
-			pBulletObject = m_ppBullets[i];
+			pBulletObject = (CBulletObject*)m_ppObjects[i];
 			break;
 		}
 	}
@@ -678,12 +678,12 @@ void CBulletShader::FireBullet(CPlayer* pPlayer)
 
 void CBulletShader::AnimateObjects(float fTimeElapsed)
 {
-	if (m_ppBullets)
+	if (m_ppObjects)
 	{
 		for (int j = 0; j < BULLETS; j++) {
-			if (m_ppBullets[j]->m_bActive)
+			if (m_ppObjects[j]->m_bActive)
 			{
-				m_ppBullets[j]->Animate(fTimeElapsed);
+				m_ppObjects[j]->Animate(fTimeElapsed);
 			}
 		}
 	}
@@ -691,16 +691,16 @@ void CBulletShader::AnimateObjects(float fTimeElapsed)
 
 void CBulletShader::ReleaseObjects()
 {
-	if (m_ppBullets)
+	if (m_ppObjects)
 	{
-		for (int j = 0; j < BULLETS; j++) if (m_ppBullets[j]->m_bActive) m_ppBullets[j]->Release();
-		delete[] m_ppBullets;
+		for (int j = 0; j < BULLETS; j++) if (m_ppObjects[j]->m_bActive) m_ppObjects[j]->Release();
+		delete[] m_ppObjects;
 	}
 }
 
 void CBulletShader::ReleaseUploadBuffers()
 {
-	for (int j = 0; j < BULLETS; j++) if (m_ppBullets[j]->m_bActive) m_ppBullets[j]->ReleaseUploadBuffers();
+	for (int j = 0; j < BULLETS; j++) if (m_ppObjects[j]->m_bActive) m_ppObjects[j]->ReleaseUploadBuffers();
 }
 
 void CBulletShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
@@ -709,9 +709,9 @@ void CBulletShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* 
 
 	for (int j = 0; j < BULLETS; j++)
 	{
-		if (m_ppBullets[j]->m_bActive) 
+		if (m_ppObjects[j]->m_bActive)
 		{
-			m_ppBullets[j]->Render(pd3dCommandList, pCamera);
+			m_ppObjects[j]->Render(pd3dCommandList, pCamera);
 		}
 	}
 }
@@ -721,8 +721,8 @@ void CBulletShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* 
 
 CEnermyShader::CEnermyShader()
 {
-	m_nEnermies = ENERMY;
-	m_ppEnermies = new CTankObject * [m_nEnermies];
+	m_nObject = ENERMY;
+	m_ppObjects = new CGameObject * [m_nObject];
 }
 
 CEnermyShader::~CEnermyShader()
@@ -736,54 +736,57 @@ void CEnermyShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommand
 	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 3);
 	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
 	CGameObject* pTankModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/TankFree_Red.bin", this);
-	for (int h = 0; h < m_nEnermies; h++)
+	for (int h = 0; h < m_nObject; h++)
 	{
-		m_ppEnermies[h] = new CTankObject();
-		m_ppEnermies[h]->SetChild(pTankModel);
-		m_ppEnermies[h]->CreateShaderVariables(pd3dDevice, pd3dCommandList);
-		m_ppEnermies[h]->m_pTerrain = (CHeightMapTerrain*)pContext;
+		m_ppObjects[h] = new CTankObject();
+		m_ppObjects[h]->SetChild(pTankModel);
+		m_ppObjects[h]->CreateShaderVariables(pd3dDevice, pd3dCommandList);
+		((CTankObject*)m_ppObjects[h])->m_pTerrain = (CHeightMapTerrain*)pContext;
 		XMFLOAT3 xmf3RandomPosition{ uid(dre),0,uid(dre) };
-		m_ppEnermies[h]->SetPosition(xmf3RandomPosition.x, pTerrain->GetHeight(xmf3RandomPosition.x, xmf3RandomPosition.z), xmf3RandomPosition.z);
+		m_ppObjects[h]->SetPosition(xmf3RandomPosition.x, pTerrain->GetHeight(xmf3RandomPosition.x, xmf3RandomPosition.z), xmf3RandomPosition.z);
 	}
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
 
 void CEnermyShader::AnimateObjects(float fTimeElapsed)
 {
-	for (int j = 0; j < m_nEnermies; j++) {
-		if (m_ppEnermies[j]) {
-			m_ppEnermies[j]->Animate(fTimeElapsed, NULL, m_pPlayer);
+	for (int j = 0; j < m_nObject; j++) {
+		if (m_ppObjects[j]) {
+			((CTankObject*)m_ppObjects[j])->Animate(fTimeElapsed, NULL, m_pPlayer);
 		}
 	}
 }
 
 void CEnermyShader::ReleaseObjects()
 {
-	if (m_ppEnermies)
+	if (m_ppObjects)
 	{
-		for (int j = 0; j < m_nEnermies; j++) if (m_ppEnermies[j]) m_ppEnermies[j]->Release();
-		delete[] m_ppEnermies;
+		for (int j = 0; j < m_nObject; j++) if (m_ppObjects[j]) m_ppObjects[j]->Release();
+		delete[] m_ppObjects;
 	}
 }
 
 void CEnermyShader::ReleaseUploadBuffers()
 {
-	for (int j = 0; j < m_nEnermies; j++) if (m_ppEnermies[j]) m_ppEnermies[j]->ReleaseUploadBuffers();
+	for (int j = 0; j < m_nObject; j++) if (m_ppObjects[j]) m_ppObjects[j]->ReleaseUploadBuffers();
 }
 
 void CEnermyShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
 {
 	CShader::Render(pd3dCommandList, pCamera);
 
-	for (int j = 0; j < m_nEnermies; j++)
+	for (int j = 0; j < m_nObject; j++)
 	{
-		if (m_ppEnermies[j])
+		if (m_ppObjects[j])
 		{
-			m_ppEnermies[j]->UpdateTransform(NULL);
-			m_ppEnermies[j]->Render(pd3dCommandList, pCamera);
+			m_ppObjects[j]->UpdateTransform(NULL);
+			m_ppObjects[j]->Render(pd3dCommandList, pCamera);
 		}
 	}
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 
 CTreeShader::CTreeShader()
 {

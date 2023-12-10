@@ -161,6 +161,12 @@ void CPlayer::Rotate(float fPitch, float fYaw, float fRoll, bool World)
 
 }
 
+void CPlayer::SetPosition(const XMFLOAT3& xmf3Position, bool bMove)
+{
+	if (bMove) Move(XMFLOAT3(xmf3Position.x - m_xmf3Position.x, xmf3Position.y - m_xmf3Position.y, xmf3Position.z - m_xmf3Position.z), false);
+	else m_xmf3Position = xmf3Position;
+}
+
 void CPlayer::Update(float fTimeElapsed)
 {
 	m_xmf3Velocity = Vector3::Add(m_xmf3Velocity, Vector3::ScalarProduct(m_xmf3Gravity, fTimeElapsed, false));
@@ -262,7 +268,7 @@ CTerrainPlayer::CTerrainPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandLi
 	m_pShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 1);
 
 	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
-	SetPosition(XMFLOAT3(pTerrain->GetWidth() * 0.5f, 2000.0f, pTerrain->GetLength() * 0.5f));
+	SetPosition(XMFLOAT3(pTerrain->GetWidth() * 0.5f, 2000.0f, pTerrain->GetLength() * 0.5f), true);
 	SetPlayerUpdatedContext(pTerrain);
 	SetCameraUpdatedContext(pTerrain);
 }
@@ -335,7 +341,7 @@ void CTerrainPlayer::OnPlayerUpdateCallback(float fTimeElapsed)
 		xmf3PlayerVelocity.y = 0.0f;
 		SetVelocity(xmf3PlayerVelocity);
 		xmf3PlayerPosition.y = fHeight;
-		SetPosition(xmf3PlayerPosition);
+		SetPosition(xmf3PlayerPosition, true);
 	}
 }
 
@@ -376,7 +382,7 @@ CTankPlayer::CTankPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd
 	PrepareAnimate();
 
 	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
-	SetPosition(XMFLOAT3(pTerrain->GetWidth() * 0.5f + 10, 500.0f, pTerrain->GetLength() * 0.5f + 10));
+	SetPosition(XMFLOAT3(pTerrain->GetWidth() * 0.5f + 10, 500.0f, pTerrain->GetLength() * 0.5f + 10), true);
 	SetPlayerUpdatedContext(pTerrain);
 	SetCameraUpdatedContext(pTerrain);
 }

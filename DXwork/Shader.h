@@ -6,6 +6,7 @@
 #include "Camera.h"
 
 class CTexture;
+class CGameObject;
 
 class CShader
 {
@@ -15,6 +16,9 @@ public:
 
 	void AddRef() { m_nReferences++; }
 	void Release() { if (--m_nReferences <= 0) delete this; }
+
+	CGameObject**					m_ppObjects = 0;
+	int								m_nObject = 0;
 
 private:
 	int									m_nReferences = 0;
@@ -196,7 +200,7 @@ public:
 	void FireBullet(CPlayer* pPlayer);
 
 protected:
-	CBulletObject					**m_ppBullets;
+	CGameObject					**m_ppObjects;
 };
 
 #define ENERMY					100
@@ -211,7 +215,7 @@ public:
 	virtual void ReleaseUploadBuffers();
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
 
-	CTankObject						**m_ppEnermies;
+	CGameObject						**m_ppObjects;
 	CPlayer							*m_pPlayer;
 	int								m_nEnermies;
 };
@@ -227,7 +231,4 @@ public:
 	virtual void ReleaseObjects();
 	virtual void ReleaseUploadBuffers();
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
-	
-	CGameObject						**m_ppObjects;
-	int								m_nObject;
 };

@@ -349,14 +349,18 @@ void CGameFramework::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPA
 			break;
 		case 'a':
 		case 'A':
-		case 'b':
-		case 'B':
+		case 'd':
+		case 'D':
 		case VK_LEFT:
 		case VK_RIGHT:
 #ifdef TANK_PLAYER
 			((CTankPlayer*)m_pPlayer)->m_fwheelRotationY = 0;
 #endif
 			break;
+		case 'z':
+		case 'Z':
+			m_bRenderBoundingBox = !m_bRenderBoundingBox;
+
 		default:
 			break;
 		}
@@ -539,6 +543,12 @@ void CGameFramework::AnimateObjects()
 	if (m_pScene) m_pScene->AnimateObjects(fTimeElapsed);
 
 	m_pPlayer->Animate(fTimeElapsed, NULL);
+	m_pPlayer->UpdateBoundingBox();
+	if (m_pScene->CheckObjectByObjectCollisions(m_pPlayer))
+	{
+		m_pPlayer->SetPosition(m_pPlayer->m_xmf3BeforeCollidedPosition, false);
+	}
+
 }
 
 void CGameFramework::CreateShaderVariables()
@@ -646,6 +656,7 @@ void CGameFramework::FrameAdvance()
 
 	m_pScene->Render(m_pd3dCommandList, m_pCamera);
 	m_pPlayer->Render(m_pd3dCommandList, m_pCamera);
+	if (m_bRenderBoundingBox) m_pScene->RenderBoundingBox(m_pd3dCommandList, m_pCamera);
 
 	d3dResourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	d3dResourceBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
