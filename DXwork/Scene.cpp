@@ -16,6 +16,9 @@ CScene::~CScene()
 
 void CScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
 {
+	m_pBoundingBoxShader = new CBoundingBoxShader();
+	m_pBoundingBoxShader->CreateShader(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE);
+
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 
 	m_pd3dGraphicsRootSignature = CreateGraphicsRootSignature(pd3dDevice);
@@ -30,21 +33,20 @@ void CScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* p
 	m_pTerrainWater = new CRippleWater(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, 257, 257, 17, 17, xmf3Scale, xmf4Color);
 	m_pTerrainWater->SetPosition(+(257 * 0.5f), 155.0f, +(257 * 0.5f));
 
-//	m_pBoundingBoxShader = new CBoundingBoxShader();
-//	m_pBoundingBoxShader->CreateShader(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE);
-
 	m_nShaders = 3;
 	m_ppShaders = new CShader * [m_nShaders];
 
-	CBulletShader* pObjectsShader = new CBulletShader();
-	pObjectsShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
-	pObjectsShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, m_pTerrain);
-	m_ppShaders[0] = pObjectsShader;
+	CBulletShader* pBulletsShader = new CBulletShader();
+	pBulletsShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
+	pBulletsShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, m_pTerrain);
+	m_ppShaders[0] = pBulletsShader;
+	AddCollisionObject(pBulletsShader);
 
 	CEnermyShader* pEnermyShader = new CEnermyShader();
 	pEnermyShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
 	pEnermyShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, m_pTerrain);
 	m_ppShaders[1] = pEnermyShader;
+	AddCollisionObject(pEnermyShader);
 
 	CTreeShader* pTreeShader = new CTreeShader();
 	pTreeShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
@@ -68,7 +70,7 @@ void CScene::AddCollisionObject(CShader* pShader)
 	m_nCollisionObject += newObjects;
 	m_ppCollisionObjects = ppCollisionObjects;
 
-	std::cout << "충돌처리 할 Object갯수 : " << m_nCollisionObject << std::endl;
+	//std::cout << "충돌처리 할 Object갯수 : " << m_nCollisionObject << std::endl;
 }
 
 ID3D12RootSignature* CScene::CreateGraphicsRootSignature(ID3D12Device* pd3dDevice)
@@ -299,13 +301,14 @@ void CScene::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera
 
 void CScene::RenderBoundingBox(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
 {
+	//std::cout << "CScene::RenderBoundingBox 함수 진입: " << m_nCollisionObject << std::endl;
 	m_pBoundingBoxShader->Render(pd3dCommandList, pCamera);
 	for (int i = 0; i < m_nCollisionObject; i++)
 	{
 		if (m_ppCollisionObjects[i]) m_ppCollisionObjects[i]->RenderBoundingBox(pd3dCommandList, pCamera);
 	}
 
-	m_pPlayer->RenderBoundingBox(pd3dCommandList, pCamera);
+	//m_pPlayer->RenderBoundingBox(pd3dCommandList, pCamera);
 }
 
 void CScene::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
@@ -336,15 +339,33 @@ void CScene::ReleaseShaderVariables()
 	for (int i = 0; i < m_nShaders; i++) if (m_ppShaders[i]) m_ppShaders[i]->ReleaseShaderVariables();
 }
 
-bool CScene::CheckObjectByObjectCollisions(CGameObject* pTargetGameObject)
+bool CScene::CheckSceneCollisions(CGameObject* pTargetGameObject)
 {
 	for (int i = 0; i < m_nCollisionObject; i++)
 	{
-		for (int p = 0; p < m_ppCollisionObjects[i]->m_nMeshes; ++p) {
-			for (int q = 0; q < pTargetGameObject->m_nMeshes; ++q) {
-				if (m_ppCollisionObjects[i]->m_pxmBoundingBoxes[p].Intersects(pTargetGameObject->m_pxmBoundingBoxes[q])) return(true);
+		if (CheckObjectByObjectCollisions(m_ppCollisionObjects[i], pTargetGameObject))
+		{
+			std::cout << "충돌발생 CScene::CheckSceneCollisions" << std::endl;
+			return true;
+		}
+	}
+	return(false);
+}
+
+bool CScene::CheckObjectByObjectCollisions(CGameObject* pObjectA, CGameObject* pObjectB)
+{
+	for (int p = 0; p < pObjectA->m_nMeshes; ++p) {
+		for (int q = 0; q < pObjectB->m_nMeshes; ++q) {
+			if (pObjectA->m_pxmBoundingBoxes[p].Intersects(pObjectB->m_pxmBoundingBoxes[q]))
+			{
+				std::cout << "충돌발생 CScene::CheckObjectByObjectCollisions" << std::endl;
+				return(true);
 			}
 		}
 	}
+	if (pObjectB->m_pSibling) CheckObjectByObjectCollisions(pObjectA, pObjectB->m_pSibling);
+	if (pObjectB->m_pChild) CheckObjectByObjectCollisions(pObjectA, pObjectB->m_pChild);
+	if (pObjectA->m_pSibling) CheckObjectByObjectCollisions(pObjectA->m_pSibling, pObjectB);
+	if (pObjectA->m_pChild) CheckObjectByObjectCollisions(pObjectA->m_pChild, pObjectB);
 	return(false);
 }

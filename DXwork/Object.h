@@ -209,6 +209,7 @@ public:
 	CGameObject* GetParent() { return(m_pParent); }
 
 	static void PrintFrameInfo(CGameObject* pGameObject, CGameObject* pParent);
+	void PrintBoundingBox();
 
 	bool							m_bActive = true;
 

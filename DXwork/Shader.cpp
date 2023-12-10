@@ -139,7 +139,7 @@ D3D12_BLEND_DESC CShader::CreateBlendState()
 	return(d3dBlendDesc);
 }
 
-void CShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature* pd3dGraphicsRootSignature)
+void CShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature* pd3dGraphicsRootSignature, D3D12_PRIMITIVE_TOPOLOGY_TYPE d3dPrimitiveTopologyType)
 {
 	::ZeroMemory(&m_d3dPipelineStateDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
 
@@ -151,7 +151,7 @@ void CShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature* pd3dGr
 	m_d3dPipelineStateDesc.DepthStencilState = CreateDepthStencilState();
 	m_d3dPipelineStateDesc.InputLayout = CreateInputLayout();
 	m_d3dPipelineStateDesc.SampleMask = UINT_MAX;
-	m_d3dPipelineStateDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	m_d3dPipelineStateDesc.PrimitiveTopologyType = d3dPrimitiveTopologyType;
 	m_d3dPipelineStateDesc.NumRenderTargets = 1;
 	m_d3dPipelineStateDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 	m_d3dPipelineStateDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -600,7 +600,7 @@ D3D12_DEPTH_STENCIL_DESC CBoundingBoxShader::CreateDepthStencilState()
 
 void CBoundingBoxShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, D3D12_PRIMITIVE_TOPOLOGY_TYPE d3dPrimitiveTopologyType)
 {
-	//CShader::CreateShader(pd3dDevice, pd3dGraphicsRootSignature, d3dPrimitiveTopologyType);
+	CShader::CreateShader(pd3dDevice, pd3dGraphicsRootSignature, d3dPrimitiveTopologyType);
 }
 
 D3D12_SHADER_BYTECODE CBoundingBoxShader::CreateVertexShader()
@@ -683,7 +683,7 @@ void CBulletShader::AnimateObjects(float fTimeElapsed)
 		for (int j = 0; j < BULLETS; j++) {
 			if (m_ppObjects[j]->m_bActive)
 			{
-				m_ppObjects[j]->Animate(fTimeElapsed);
+				((CBulletObject*)m_ppObjects[j])->Animate(fTimeElapsed);
 			}
 		}
 	}
@@ -790,7 +790,7 @@ void CEnermyShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* 
 
 CTreeShader::CTreeShader()
 {
-	m_nObject = 200;
+	m_nObject = 10;
 	m_ppObjects = new CGameObject * [m_nObject];
 }
 
@@ -815,6 +815,15 @@ void CTreeShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandLi
 		m_ppObjects[h]->SetPosition(xmf3RandomPosition.x, pTerrain->GetHeight(xmf3RandomPosition.x, xmf3RandomPosition.z), xmf3RandomPosition.z);
 	}
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
+}
+
+void CTreeShader::AnimateObjects(float fTimeElapsed)
+{
+	for (int j = 0; j < m_nObject; j++) {
+		if (m_ppObjects[j]) {
+			m_ppObjects[j]->Animate(fTimeElapsed, NULL);
+		}
+	}
 }
 
 void CTreeShader::ReleaseObjects()

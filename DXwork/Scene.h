@@ -16,7 +16,8 @@ public:
 	virtual void UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList);
 	virtual void ReleaseShaderVariables();
 
-	bool CheckObjectByObjectCollisions(CGameObject* pTargetGameObject);
+	bool CheckSceneCollisions(CGameObject* pTargetGameObject);
+	bool CheckObjectByObjectCollisions(CGameObject* pObjectA, CGameObject* pObjectB);
 
 	void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
 	void AddCollisionObject(CShader* pShader);

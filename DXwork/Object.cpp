@@ -293,9 +293,14 @@ CGameObject::CGameObject(int nMeshes, int nMaterials)
 	{
 		m_ppMeshes = new CMesh * [m_nMeshes];
 		m_ppBoundingBoxMeshes = new CBoundingBoxMesh * [m_nMeshes];
+		m_pxmBoundingBoxes = new BoundingOrientedBox[m_nMeshes];
 		for (int i = 0; i < m_nMeshes; i++) {
 			m_ppMeshes[i] = NULL;
 			m_ppBoundingBoxMeshes[i] = NULL;
+			m_pxmBoundingBoxes[i] = BoundingOrientedBox(
+				XMFLOAT3(0.0f, 0.0f, 0.0f), 
+				XMFLOAT3(0.1f, 0.1f, 0.1f), 
+				XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f));
 		}
 	}
 
@@ -338,7 +343,7 @@ CGameObject::~CGameObject()
 
 void CGameObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
 {
-	//UpdateBoundingBox();
+	UpdateBoundingBox();
 
 	if (m_pSibling) m_pSibling->Animate(fTimeElapsed, pxmf4x4Parent);
 	if (m_pChild) m_pChild->Animate(fTimeElapsed, &m_xmf4x4World);
@@ -562,15 +567,18 @@ void CGameObject::Rotate(XMFLOAT4* pxmf4Quaternion)
 
 void CGameObject::UpdateBoundingBox()
 {
-	OnPrepareRender();
+	//UpdateTransform();
 	for (int i = 0; i < m_nMeshes; ++i) {
 		m_ppMeshes[i]->m_xmBoundingBox.Transform(m_pxmBoundingBoxes[i], XMLoadFloat4x4(&m_xmf4x4World));
-		XMStoreFloat4(&m_pxmBoundingBoxes[i].Orientation, XMQuaternionNormalize(XMLoadFloat4(&m_pxmBoundingBoxes[i].Orientation)));
+		//XMStoreFloat4(&m_pxmBoundingBoxes[i].Orientation, XMQuaternionNormalize(XMLoadFloat4(&m_pxmBoundingBoxes[i].Orientation)));
 	}
+	if (m_pSibling) m_pSibling->UpdateBoundingBox();
+	if (m_pChild) m_pChild->UpdateBoundingBox();
 }
 
 void CGameObject::RenderBoundingBox(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
 {
+	//UpdateTransform();
 	for (int i = 0; i < m_nMeshes; ++i) {
 		if (m_ppBoundingBoxMeshes[i])
 		{
@@ -578,6 +586,8 @@ void CGameObject::RenderBoundingBox(ID3D12GraphicsCommandList* pd3dCommandList, 
 			m_ppBoundingBoxMeshes[i]->Render(pd3dCommandList);
 		}
 	}
+	if (m_pSibling) m_pSibling->RenderBoundingBox(pd3dCommandList, pCamera);
+	if (m_pChild) m_pChild->RenderBoundingBox(pd3dCommandList, pCamera);
 }
 
 int CGameObject::FindReplicatedTexture(_TCHAR* pstrTextureName, D3D12_GPU_DESCRIPTOR_HANDLE* pd3dSrvGpuDescriptorHandle)
@@ -753,6 +763,13 @@ CGameObject* CGameObject::LoadFrameHierarchyFromFile(ID3D12Device* pd3dDevice, I
 			CStandardMesh* pMesh = new CStandardMesh(pd3dDevice, pd3dCommandList);
 			pMesh->LoadMeshFromFile(pd3dDevice, pd3dCommandList, pInFile);
 			pGameObject->SetMesh(0, pMesh);
+			CBoundingBoxMesh* pBoundingBoxMesh = new CBoundingBoxMesh(pd3dDevice, pd3dCommandList);
+			pGameObject->SetBoundingBoxMesh(0, pBoundingBoxMesh);
+			pGameObject->m_pxmBoundingBoxes = new BoundingOrientedBox;
+			pGameObject->m_pxmBoundingBoxes[0] = BoundingOrientedBox(
+				XMFLOAT3(0.0f, 0.0f, 0.0f),
+				XMFLOAT3(0.1f, 0.1f, 0.1f),
+				XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f));
 		}
 		else if (!strcmp(pstrToken, "<Materials>:"))
 		{
@@ -793,6 +810,22 @@ void CGameObject::PrintFrameInfo(CGameObject* pGameObject, CGameObject* pParent)
 
 	if (pGameObject->m_pSibling) CGameObject::PrintFrameInfo(pGameObject->m_pSibling, pParent);
 	if (pGameObject->m_pChild) CGameObject::PrintFrameInfo(pGameObject->m_pChild, pGameObject);
+}
+
+void CGameObject::PrintBoundingBox()
+{
+	//UpdateTransform();
+	if (m_pxmBoundingBoxes) {
+		std::cout << m_pstrFrameName << std::endl;
+		std::cout << m_pxmBoundingBoxes[0].Center.x << ' ';
+		std::cout << m_pxmBoundingBoxes[0].Center.y << ' ';
+		std::cout << m_pxmBoundingBoxes[0].Center.z << ' ';
+		std::cout << std::endl;
+		std::cout << std::endl;
+	}
+	if (m_pSibling) m_pSibling->PrintBoundingBox();
+	if (m_pChild) m_pChild->PrintBoundingBox();
+	return;
 }
 
 CGameObject* CGameObject::LoadGeometryFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, char* pstrFileName, CShader* pShader)

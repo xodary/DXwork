@@ -697,6 +697,8 @@ CBoundingBoxMesh::~CBoundingBoxMesh()
 
 void CBoundingBoxMesh::UpdateVertexPosition(BoundingOrientedBox* pxmBoundingBox)
 {
+	// std::cout << "CBoundingBoxMesh::UpdateVertexPosition 함수 진입" << std::endl;
+
 	XMFLOAT3 xmf3Corners[8];
 	pxmBoundingBox->GetCorners(xmf3Corners);
 
@@ -739,3 +741,10 @@ void CBoundingBoxMesh::UpdateVertexPosition(BoundingOrientedBox* pxmBoundingBox)
 	m_pcbMappedPositions[i++] = xmf3Corners[7];
 }
 
+void CBoundingBoxMesh::Render(ID3D12GraphicsCommandList* pd3dCommandList)
+{
+	pd3dCommandList->IASetPrimitiveTopology(m_d3dPrimitiveTopology);
+	pd3dCommandList->IASetVertexBuffers(m_nSlot, 1, &m_d3dPositionBufferView);
+
+	pd3dCommandList->DrawInstanced(m_nVertices, 1, m_nOffset, 0);
+}

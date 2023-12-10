@@ -544,8 +544,11 @@ void CGameFramework::AnimateObjects()
 
 	m_pPlayer->Animate(fTimeElapsed, NULL);
 	m_pPlayer->UpdateBoundingBox();
-	if (m_pScene->CheckObjectByObjectCollisions(m_pPlayer))
+	m_pPlayer->PrintBoundingBox();
+
+	if (m_pScene->CheckSceneCollisions(m_pPlayer))
 	{
+		std::cout << "충돌발생" << std::endl;
 		m_pPlayer->SetPosition(m_pPlayer->m_xmf3BeforeCollidedPosition, false);
 	}
 
@@ -621,6 +624,9 @@ void CGameFramework::MoveToNextFrame()
 
 void CGameFramework::FrameAdvance()
 {
+	system("cls");
+	m_pPlayer->m_xmf3BeforeCollidedPosition = m_pPlayer->GetPosition();
+
 	m_GameTimer.Tick(0.0f);
 
 	ProcessInput();

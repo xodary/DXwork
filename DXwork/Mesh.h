@@ -273,4 +273,5 @@ public:
 	XMFLOAT3* m_pcbMappedPositions = NULL;
 
 	void UpdateVertexPosition(BoundingOrientedBox* pxmBoundingBox);
+	void Render(ID3D12GraphicsCommandList* pd3dCommandList);
 };
