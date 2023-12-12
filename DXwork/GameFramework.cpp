@@ -544,7 +544,7 @@ void CGameFramework::AnimateObjects()
 
 	m_pPlayer->Animate(fTimeElapsed, NULL);
 	m_pPlayer->UpdateBoundingBox();
-	m_pPlayer->PrintBoundingBox();
+	//m_pPlayer->PrintBoundingBox();
 
 	if (m_pScene->CheckSceneCollisions(m_pPlayer))
 	{

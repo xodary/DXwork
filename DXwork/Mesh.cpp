@@ -739,12 +739,23 @@ void CBoundingBoxMesh::UpdateVertexPosition(BoundingOrientedBox* pxmBoundingBox)
 
 	m_pcbMappedPositions[i++] = xmf3Corners[3];
 	m_pcbMappedPositions[i++] = xmf3Corners[7];
+
+	// std::cout << pxmBoundingBox->Center.x << ' ';
+	// std::cout << pxmBoundingBox->Center.y << ' ';
+	// std::cout << pxmBoundingBox->Center.z << ' ';
+	// std::cout << std::endl;
+	// 
+	// std::cout << m_pcbMappedPositions[0].x << ' ';
+	// std::cout << m_pcbMappedPositions[0].y << ' ';
+	// std::cout << m_pcbMappedPositions[0].z << ' ';
+	// std::cout << std::endl << std::endl;
+
 }
 
 void CBoundingBoxMesh::Render(ID3D12GraphicsCommandList* pd3dCommandList)
 {
 	pd3dCommandList->IASetPrimitiveTopology(m_d3dPrimitiveTopology);
 	pd3dCommandList->IASetVertexBuffers(m_nSlot, 1, &m_d3dPositionBufferView);
-
+	
 	pd3dCommandList->DrawInstanced(m_nVertices, 1, m_nOffset, 0);
 }

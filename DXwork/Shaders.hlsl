@@ -333,7 +333,7 @@ float4 PSStandard(VS_STANDARD_OUTPUT input) : SV_TARGET
 //      cIllumination = Lighting(input.positionW, normalW);
         cColor = lerp(cColor, cIllumination, 0.5f);
     }
-    return (cColor);
+    return cColor;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -351,7 +351,9 @@ struct VS_BOUNDINGBOX_OUTPUT
 VS_BOUNDINGBOX_OUTPUT VSBoundingBox(VS_BOUNDINGBOX_INPUT input)
 {
     VS_BOUNDINGBOX_OUTPUT output;
+	
     output.positionH = mul(mul(float4(input.position, 1.0f), gmtxView), gmtxProjection);
+    //output.positionH = float4(input.position, 1.0f);
     return (output);
 }
 

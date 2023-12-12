@@ -17,8 +17,10 @@ public:
 	void AddRef() { m_nReferences++; }
 	void Release() { if (--m_nReferences <= 0) delete this; }
 
-	CGameObject**					m_ppObjects = 0;
-	int								m_nObject = 0;
+	CGameObject**						m_ppObjects = 0;
+	int									m_nObject = 0;
+
+	LPCSTR								m_pszShaderName;
 
 private:
 	int									m_nReferences = 0;

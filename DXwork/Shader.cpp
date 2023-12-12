@@ -58,7 +58,11 @@ D3D12_SHADER_BYTECODE CShader::CompileShaderFromFile(WCHAR* pszFileName, LPCSTR 
 		else {
 			std::cout << "Shader Compilation Failed (No Error Message Available)" << std::endl;
 		}
-
+	}
+	else
+	{
+		m_pszShaderName = pszShaderName;
+		//std::cout << "Shader Function: " << m_pszShaderName << std::endl;
 	}
 
 	D3D12_SHADER_BYTECODE d3dShaderByteCode;
@@ -159,6 +163,10 @@ void CShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature* pd3dGr
 	m_d3dPipelineStateDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 
 	HRESULT hResult = pd3dDevice->CreateGraphicsPipelineState(&m_d3dPipelineStateDesc, __uuidof(ID3D12PipelineState), (void**)&m_pd3dPipelineState);
+	if (FAILED(hResult)) {
+		std::cout << "Can't Create PipelineState" << std::endl;
+	}
+
 }
 
 void CShader::OnPrepareRender(ID3D12GraphicsCommandList* pd3dCommandList)
@@ -169,6 +177,7 @@ void CShader::OnPrepareRender(ID3D12GraphicsCommandList* pd3dCommandList)
 
 void CShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
 {
+	//std::cout << m_pszShaderName << " / CShader::Render" << std::endl;
 	OnPrepareRender(pd3dCommandList);
 }
 
@@ -601,6 +610,11 @@ D3D12_DEPTH_STENCIL_DESC CBoundingBoxShader::CreateDepthStencilState()
 void CBoundingBoxShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, D3D12_PRIMITIVE_TOPOLOGY_TYPE d3dPrimitiveTopologyType)
 {
 	CShader::CreateShader(pd3dDevice, pd3dGraphicsRootSignature, d3dPrimitiveTopologyType);
+	
+	if (m_pd3dVertexShaderBlob) m_pd3dVertexShaderBlob->Release();
+	if (m_pd3dPixelShaderBlob) m_pd3dPixelShaderBlob->Release();
+
+	if (m_d3dPipelineStateDesc.InputLayout.pInputElementDescs) delete[] m_d3dPipelineStateDesc.InputLayout.pInputElementDescs;
 }
 
 D3D12_SHADER_BYTECODE CBoundingBoxShader::CreateVertexShader()
@@ -631,7 +645,7 @@ CBulletShader::~CBulletShader()
 
 void CBulletShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, void* pContext)
 {
-	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 20);
+	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 2 * BULLETS);
 
 	for (int h = 0; h < BULLETS; h++)
 	{
@@ -779,7 +793,7 @@ void CEnermyShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* 
 	{
 		if (m_ppObjects[j])
 		{
-			m_ppObjects[j]->UpdateTransform(NULL);
+			//m_ppObjects[j]->UpdateTransform(NULL);
 			m_ppObjects[j]->Render(pd3dCommandList, pCamera);
 		}
 	}

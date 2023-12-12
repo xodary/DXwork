@@ -411,7 +411,7 @@ void CGameObject::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pC
 			for (int i = 0; i < m_nMeshes; i++)
 			{
 				if (m_ppMeshes[i]) m_ppMeshes[i]->Render(pd3dCommandList);
-				if (m_ppBoundingBoxMeshes[i]) m_ppBoundingBoxMeshes[i]->Render(pd3dCommandList);
+				//if (m_ppBoundingBoxMeshes[i]) m_ppBoundingBoxMeshes[i]->Render(pd3dCommandList);
 			}
 		}
 	}
@@ -567,10 +567,9 @@ void CGameObject::Rotate(XMFLOAT4* pxmf4Quaternion)
 
 void CGameObject::UpdateBoundingBox()
 {
-	//UpdateTransform();
 	for (int i = 0; i < m_nMeshes; ++i) {
 		m_ppMeshes[i]->m_xmBoundingBox.Transform(m_pxmBoundingBoxes[i], XMLoadFloat4x4(&m_xmf4x4World));
-		//XMStoreFloat4(&m_pxmBoundingBoxes[i].Orientation, XMQuaternionNormalize(XMLoadFloat4(&m_pxmBoundingBoxes[i].Orientation)));
+		XMStoreFloat4(&m_pxmBoundingBoxes[i].Orientation, XMQuaternionNormalize(XMLoadFloat4(&m_pxmBoundingBoxes[i].Orientation)));
 	}
 	if (m_pSibling) m_pSibling->UpdateBoundingBox();
 	if (m_pChild) m_pChild->UpdateBoundingBox();
@@ -578,7 +577,6 @@ void CGameObject::UpdateBoundingBox()
 
 void CGameObject::RenderBoundingBox(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
 {
-	//UpdateTransform();
 	for (int i = 0; i < m_nMeshes; ++i) {
 		if (m_ppBoundingBoxMeshes[i])
 		{
@@ -765,7 +763,7 @@ CGameObject* CGameObject::LoadFrameHierarchyFromFile(ID3D12Device* pd3dDevice, I
 			pGameObject->SetMesh(0, pMesh);
 			CBoundingBoxMesh* pBoundingBoxMesh = new CBoundingBoxMesh(pd3dDevice, pd3dCommandList);
 			pGameObject->SetBoundingBoxMesh(0, pBoundingBoxMesh);
-			pGameObject->m_pxmBoundingBoxes = new BoundingOrientedBox;
+			pGameObject->m_pxmBoundingBoxes = new BoundingOrientedBox[1];
 			pGameObject->m_pxmBoundingBoxes[0] = BoundingOrientedBox(
 				XMFLOAT3(0.0f, 0.0f, 0.0f),
 				XMFLOAT3(0.1f, 0.1f, 0.1f),
@@ -817,11 +815,17 @@ void CGameObject::PrintBoundingBox()
 	//UpdateTransform();
 	if (m_pxmBoundingBoxes) {
 		std::cout << m_pstrFrameName << std::endl;
+
+		XMFLOAT3 a = GetPosition();
+		std::cout << a.x << ' ';
+		std::cout << a.y << ' ';
+		std::cout << a.z << ' ';
+		std::cout << std::endl;
+
 		std::cout << m_pxmBoundingBoxes[0].Center.x << ' ';
 		std::cout << m_pxmBoundingBoxes[0].Center.y << ' ';
 		std::cout << m_pxmBoundingBoxes[0].Center.z << ' ';
-		std::cout << std::endl;
-		std::cout << std::endl;
+		std::cout << std::endl << std::endl;
 	}
 	if (m_pSibling) m_pSibling->PrintBoundingBox();
 	if (m_pChild) m_pChild->PrintBoundingBox();
@@ -1034,7 +1038,7 @@ void CTankObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent, CPlayer
 {
 	if (Vector3::Length(Vector3::Subtract(GetPosition(), ((CGameObject*)pPlayer)->GetPosition())) > 20)
 		SetPosition(Vector3::Add(GetPosition(), GetLook(), m_fMovingSpeed * fTimeElapsed));
-	CGameObject::Animate(fTimeElapsed, pxmf4x4Parent);
+	
 
 	XMFLOAT3 xmf3Scale = m_pTerrain->GetScale();
 	XMFLOAT3 xmf3PlayerPosition = GetPosition();
@@ -1057,6 +1061,8 @@ void CTankObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent, CPlayer
 	xmf3PlayerPosition.y = fHeight;
 	SetPosition(xmf3PlayerPosition);
 	UpdateTransform();
+
+	CGameObject::Animate(fTimeElapsed, pxmf4x4Parent);
 }
 
 
