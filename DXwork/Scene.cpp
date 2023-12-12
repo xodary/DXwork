@@ -278,8 +278,6 @@ void CScene::AnimateObjects(float fTimeElapsed)
 			m_ppShaders[i]->AnimateObjects(fTimeElapsed);
 		}
 	}
-	//m_ppCollisionObjects[0]->UpdateTransform();
-	//m_ppCollisionObjects[0]->PrintBoundingBox();
 }
 
 void CScene::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
@@ -348,6 +346,7 @@ bool CScene::CheckSceneCollisions(CGameObject* pTargetGameObject)
 {
 	for (int i = 0; i < m_nCollisionObject; i++)
 	{
+		isCollided = false;
 		if (CheckObjectByObjectCollisions(m_ppCollisionObjects[i], pTargetGameObject))
 		{
 			//std::cout << "面倒惯积 CScene::CheckSceneCollisions" << std::endl;
@@ -364,7 +363,8 @@ bool CScene::CheckObjectByObjectCollisions(CGameObject* pObjectA, CGameObject* p
 			if (pObjectA->m_pxmBoundingBoxes[p].Intersects(pObjectB->m_pxmBoundingBoxes[q]))
 			{
 				//std::cout << "面倒惯积 CScene::CheckObjectByObjectCollisions" << std::endl;
-				return(true);
+				isCollided = true;
+				return isCollided;
 			}
 		}
 	}
@@ -372,5 +372,5 @@ bool CScene::CheckObjectByObjectCollisions(CGameObject* pObjectA, CGameObject* p
 	if (pObjectB->m_pChild) CheckObjectByObjectCollisions(pObjectA, pObjectB->m_pChild);
 	if (pObjectA->m_pSibling) CheckObjectByObjectCollisions(pObjectA->m_pSibling, pObjectB);
 	if (pObjectA->m_pChild) CheckObjectByObjectCollisions(pObjectA->m_pChild, pObjectB);
-	return(false);
+	return(isCollided);
 }

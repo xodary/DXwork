@@ -756,8 +756,13 @@ void CEnermyShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommand
 		m_ppObjects[h]->SetChild(pTankModel);
 		m_ppObjects[h]->CreateShaderVariables(pd3dDevice, pd3dCommandList);
 		((CTankObject*)m_ppObjects[h])->m_pTerrain = (CHeightMapTerrain*)pContext;
-		XMFLOAT3 xmf3RandomPosition{ uid(dre),0,uid(dre) };
-		m_ppObjects[h]->SetPosition(xmf3RandomPosition.x, pTerrain->GetHeight(xmf3RandomPosition.x, xmf3RandomPosition.z), xmf3RandomPosition.z);
+
+		// Random
+		// XMFLOAT3 xmf3RandomPosition{ uid(dre),0,uid(dre) };
+		// m_ppObjects[h]->SetPosition(xmf3RandomPosition.x, pTerrain->GetHeight(xmf3RandomPosition.x, xmf3RandomPosition.z), xmf3RandomPosition.z);
+		
+		XMFLOAT3 xmf3Position{ pTerrain->GetWidth() * 0.5f + 10 + 50, 0, pTerrain->GetLength() * 0.5f + 10 + 50 };
+		m_ppObjects[h]->SetPosition(xmf3Position.x, pTerrain->GetHeight(xmf3Position.x, xmf3Position.z), xmf3Position.z);
 	}
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
@@ -804,7 +809,7 @@ void CEnermyShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* 
 
 CTreeShader::CTreeShader()
 {
-	m_nObject = 10;
+	m_nObject = TREE;
 	m_ppObjects = new CGameObject * [m_nObject];
 }
 
@@ -823,10 +828,15 @@ void CTreeShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandLi
 		m_ppObjects[h]->SetScale(10, 10, 10);
 		m_ppObjects[h]->SetChild(pTreeModel);
 		m_ppObjects[h]->CreateShaderVariables(pd3dDevice, pd3dCommandList);
-		XMFLOAT3 xmf3RandomPosition{ uid(dre),0,uid(dre) };
-		while (pTerrain->GetHeight(xmf3RandomPosition.x, xmf3RandomPosition.z) < 150.0f)
-			xmf3RandomPosition = XMFLOAT3{ uid(dre),0,uid(dre) };
-		m_ppObjects[h]->SetPosition(xmf3RandomPosition.x, pTerrain->GetHeight(xmf3RandomPosition.x, xmf3RandomPosition.z), xmf3RandomPosition.z);
+
+		// Random 
+		// XMFLOAT3 xmf3RandomPosition{ uid(dre),0,uid(dre) };
+		// while (pTerrain->GetHeight(xmf3RandomPosition.x, xmf3RandomPosition.z) < 150.0f)
+		// 	xmf3RandomPosition = XMFLOAT3{ uid(dre),0,uid(dre) };
+		// m_ppObjects[h]->SetPosition(xmf3RandomPosition.x, pTerrain->GetHeight(xmf3RandomPosition.x, xmf3RandomPosition.z), xmf3RandomPosition.z);
+	
+		XMFLOAT3 xmf3Position{ pTerrain->GetWidth() * 0.5f + 10, 0, pTerrain->GetLength() * 0.5f + 10 + 50  };
+		m_ppObjects[h]->SetPosition(xmf3Position.x, pTerrain->GetHeight(xmf3Position.x, xmf3Position.z), xmf3Position.z);
 	}
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }

@@ -479,6 +479,8 @@ void CGameFramework::ReleaseObjects()
 
 void CGameFramework::ProcessInput()
 {
+	m_pPlayer->m_xmf3BeforeCollidedPosition = m_pPlayer->GetPosition();
+
 	static UCHAR pKeysBuffer[256];
 	bool bProcessedByScene = false;
 	if (GetKeyboardState(pKeysBuffer))
@@ -543,15 +545,17 @@ void CGameFramework::AnimateObjects()
 	if (m_pScene) m_pScene->AnimateObjects(fTimeElapsed);
 
 	m_pPlayer->Animate(fTimeElapsed, NULL);
+	m_pPlayer->OnPrepareRender();
 	m_pPlayer->UpdateBoundingBox();
 	//m_pPlayer->PrintBoundingBox();
 
 	if (m_pScene->CheckSceneCollisions(m_pPlayer))
 	{
 		std::cout << "충돌발생" << std::endl;
-		m_pPlayer->SetPosition(m_pPlayer->m_xmf3BeforeCollidedPosition, false);
+		XMFLOAT3 prePos = m_pPlayer->m_xmf3BeforeCollidedPosition;
+		printf("이전 위치로 돌아감: (%f, %f, %f)\n", prePos.x, prePos.y, prePos.z);
+		m_pPlayer->SetPosition(prePos, false);
 	}
-
 }
 
 void CGameFramework::CreateShaderVariables()
@@ -625,7 +629,6 @@ void CGameFramework::MoveToNextFrame()
 void CGameFramework::FrameAdvance()
 {
 	system("cls");
-	m_pPlayer->m_xmf3BeforeCollidedPosition = m_pPlayer->GetPosition();
 
 	m_GameTimer.Tick(0.0f);
 

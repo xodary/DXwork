@@ -202,7 +202,7 @@ public:
 	void FireBullet(CPlayer* pPlayer);
 };
 
-#define ENERMY					30
+#define ENERMY					0
 class CEnermyShader : public CStandardShader
 {
 public:
@@ -217,8 +217,7 @@ public:
 	CPlayer							*m_pPlayer;
 };
 
-class CGameObject;
-
+#define TREE					1
 class CTreeShader : public CStandardShader
 {
 public:

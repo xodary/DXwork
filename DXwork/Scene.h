@@ -50,5 +50,5 @@ public:
 
 	CGameObject					**m_ppCollisionObjects = NULL;
 	int							m_nCollisionObject = 0;
-
+	bool						isCollided = false;
 };
