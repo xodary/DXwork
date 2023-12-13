@@ -3,25 +3,27 @@ cbuffer cbPlayerInfo : register(b0)
 	matrix		gmtxPlayerWorld : packoffset(c0);
 };
 
-struct MATERIAL
-{
-	float4					m_cAmbient;
-	float4					m_cDiffuse;
-	float4					m_cSpecular; //a = power
-	float4					m_cEmissive;
-};
-
 cbuffer cbCameraInfo : register(b1)
 {
 	matrix		gmtxView : packoffset(c0);
 	matrix		gmtxProjection : packoffset(c4);
 };
 
+struct MATERIAL
+{
+	float4					m_cAmbient;
+	float4					m_cDiffuse;
+	float4					m_cSpecular; //a = power
+	float4					m_cEmissive;
+	
+	matrix					gmtxTexture;
+};
+
 cbuffer cbGameObjectInfo : register(b2)
 {
 	matrix		gmtxGameObject : packoffset(c0);
 	MATERIAL	gMaterial : packoffset(c4);
-	uint		gnTexturesMask : packoffset(c8);
+	uint		gnTexturesMask : packoffset(c12);
 };
 
 cbuffer cbFrameworkInfo : register(b4)
@@ -255,7 +257,6 @@ float4 PSTerrain(VS_TERRAIN_OUTPUT input) : SV_TARGET
 // Standard
 
 #define MATERIAL_ALBEDO_MAP			0x01
-#define MATERIAL_SPECULAR_MAP		0x02
 #define MATERIAL_NORMAL_MAP			0x04
 #define MATERIAL_METALLIC_MAP		0x08
 #define MATERIAL_EMISSION_MAP		0x10
@@ -263,7 +264,6 @@ float4 PSTerrain(VS_TERRAIN_OUTPUT input) : SV_TARGET
 #define MATERIAL_DETAIL_NORMAL_MAP	0x40
 
 Texture2D gtxtAlbedoTexture : register(t8);
-//Texture2D gtxtSpecularTexture : register(t9);
 Texture2D gtxtMetallicTexture : register(t9);
 Texture2D gtxtNormalTexture : register(t10);
 Texture2D gtxtEmissionTexture : register(t11);

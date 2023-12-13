@@ -333,9 +333,19 @@ void CTerrainPlayer::OnPlayerUpdateCallback(float fTimeElapsed)
 	float fHeight = pTerrain->GetHeight(xmf3PlayerPosition.x, xmf3PlayerPosition.z, bReverseQuad) + 6.0f;
 	if (xmf3PlayerPosition.y < fHeight)
 	{
-		m_xmf3Up = pTerrain->GetNormal(xmf3PlayerPosition.x, xmf3PlayerPosition.z);
+		XMFLOAT3 terrainNormal;
+		terrainNormal = pTerrain->GetNormal(xmf3PlayerPosition.x, xmf3PlayerPosition.z);
+		XMVECTOR vTerrainNormal = XMLoadFloat3(&terrainNormal);
+		XMVECTOR vTankNormal = XMLoadFloat3(&m_xmf3Up);
+		XMVECTOR lerpedVector = XMVectorLerp(vTerrainNormal, vTankNormal, 0.4f);
+		
+		XMStoreFloat3(&m_xmf3Up, lerpedVector);
 		XMStoreFloat3(&m_xmf3Right, XMVector3Cross(XMLoadFloat3(&m_xmf3Up), XMLoadFloat3(&m_xmf3Look)));
 		XMStoreFloat3(&m_xmf3Look, XMVector3Cross(XMLoadFloat3(&m_xmf3Right), XMLoadFloat3(&m_xmf3Up)));
+
+		m_xmf3Right = Vector3::Normalize(m_xmf3Right);
+		m_xmf3Up = Vector3::Normalize(m_xmf3Up);
+		m_xmf3Look = Vector3::Normalize(m_xmf3Look);
 
 		XMFLOAT3 xmf3PlayerVelocity = GetVelocity();
 		xmf3PlayerVelocity.y = 0.0f;

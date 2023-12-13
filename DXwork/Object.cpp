@@ -381,6 +381,7 @@ void CGameObject::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12Graphics
 
 void CGameObject::UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList)
 {
+
 }
 
 void CGameObject::UpdateShaderVariable(ID3D12GraphicsCommandList* pd3dCommandList, XMFLOAT4X4* pxmf4x4World)
@@ -1063,7 +1064,7 @@ void CTankObject::PrepareAnimate()
 
 void CTankObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent, CPlayer* pPlayer)
 {
-	if (Vector3::Length(Vector3::Subtract(GetPosition(), ((CGameObject*)pPlayer)->GetPosition())) > 30)
+	if (Vector3::Length(Vector3::Subtract(GetPosition(), ((CGameObject*)pPlayer)->GetPosition())) > 40)
 		SetPosition(Vector3::Add(GetPosition(), GetLook(), m_fMovingSpeed * fTimeElapsed));
 	
 
