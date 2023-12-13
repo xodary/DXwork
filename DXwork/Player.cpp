@@ -357,11 +357,6 @@ void CTerrainPlayer::OnCameraUpdateCallback(float fTimeElapsed)
 	{
 		xmf3CameraPosition.y = fHeight;
 		m_pCamera->SetPosition(xmf3CameraPosition);
-		if (m_pCamera->GetMode() == THIRD_PERSON_CAMERA)
-		{
-			CThirdPersonCamera* p3rdPersonCamera = (CThirdPersonCamera*)m_pCamera;
-			p3rdPersonCamera->SetLookAt(GetPosition());
-		}
 	}
 }
 

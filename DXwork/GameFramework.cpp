@@ -551,9 +551,9 @@ void CGameFramework::AnimateObjects()
 
 	if (m_pScene->CheckSceneCollisions(m_pPlayer))
 	{
-		std::cout << "충돌발생" << std::endl;
+		//std::cout << "충돌발생" << std::endl;
 		XMFLOAT3 prePos = m_pPlayer->m_xmf3BeforeCollidedPosition;
-		printf("이전 위치로 돌아감: (%f, %f, %f)\n", prePos.x, prePos.y, prePos.z);
+		//printf("이전 위치로 돌아감: (%f, %f, %f)\n", prePos.x, prePos.y, prePos.z);
 		m_pPlayer->SetPosition(prePos, false);
 	}
 }

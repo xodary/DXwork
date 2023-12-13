@@ -337,6 +337,7 @@ public:
 	CGameObject					*m_pTracksFrontRightFrame;
 	CHeightMapTerrain			*m_pTerrain;
 	float						p_fScale = 8.f;
+	int							m_HP = 100;
 
 	CTankObject();
 	virtual ~CTankObject();

@@ -1036,7 +1036,7 @@ void CTankObject::PrepareAnimate()
 
 void CTankObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent, CPlayer* pPlayer)
 {
-	if (Vector3::Length(Vector3::Subtract(GetPosition(), ((CGameObject*)pPlayer)->GetPosition())) > 20)
+	if (Vector3::Length(Vector3::Subtract(GetPosition(), ((CGameObject*)pPlayer)->GetPosition())) > 30)
 		SetPosition(Vector3::Add(GetPosition(), GetLook(), m_fMovingSpeed * fTimeElapsed));
 	
 

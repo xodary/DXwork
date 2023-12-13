@@ -20,7 +20,7 @@ public:
 	bool CheckObjectByObjectCollisions(CGameObject* pObjectA, CGameObject* pObjectB);
 
 	void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
-	void AddCollisionObject(CShader* pShader);
+	void AddCollisionObject(CShader* pShader, CGameObject**& ppObject, int& nObject);
 	ID3D12RootSignature* CreateGraphicsRootSignature(ID3D12Device* pd3dDevice);
 	void PrepareRender(ID3D12GraphicsCommandList* pd3dCommandList);
 	ID3D12RootSignature* GetGraphicsRootSignature() { return(m_pd3dGraphicsRootSignature); }
@@ -50,5 +50,6 @@ public:
 
 	CGameObject					**m_ppCollisionObjects = NULL;
 	int							m_nCollisionObject = 0;
+
 	bool						isCollided = false;
 };

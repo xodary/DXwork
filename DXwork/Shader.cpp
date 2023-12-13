@@ -5,6 +5,7 @@
 #include "stdafx.h"
 #include "Player.h"
 #include "Shader.h"
+#include "Scene.h"
 
 CShader::CShader()
 {
@@ -636,18 +637,21 @@ void CBoundingBoxShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCam
 //
 CBulletShader::CBulletShader()
 {
-	m_ppObjects = new CGameObject * [BULLETS];
+	m_nObject = BULLETS;
+	m_ppObjects = new CGameObject * [m_nObject];
 }
 
 CBulletShader::~CBulletShader()
 {
 }
 
-void CBulletShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, void* pContext)
+void CBulletShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, CScene* pScene, void* pContext)
 {
-	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 2 * BULLETS);
+	m_pScene = pScene;
 
-	for (int h = 0; h < BULLETS; h++)
+	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 2 * m_nObject);
+
+	for (int h = 0; h < m_nObject; h++)
 	{
 		CGameObject* pBulletModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/¬³TF_Missile_Blue.bin", this);
 		m_ppObjects[h] = new CBulletObject(300.0f);
@@ -664,7 +668,7 @@ void CBulletShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommand
 void CBulletShader::FireBullet(CPlayer* pPlayer)
 {
 	CBulletObject* pBulletObject = NULL;
-	for (int i = 0; i < BULLETS; i++)
+	for (int i = 0; i < m_nObject; i++)
 	{
 		if (!m_ppObjects[i]->m_bActive)
 		{
@@ -694,10 +698,14 @@ void CBulletShader::AnimateObjects(float fTimeElapsed)
 {
 	if (m_ppObjects)
 	{
-		for (int j = 0; j < BULLETS; j++) {
+		for (int j = 0; j < m_nObject; j++) {
 			if (m_ppObjects[j]->m_bActive)
 			{
 				((CBulletObject*)m_ppObjects[j])->Animate(fTimeElapsed);
+				if (m_pScene->CheckSceneCollisions(m_ppObjects[j]))
+				{
+					std::cout << "ÃÑ¾Ë - ¾À ¿ÀºêÁ§Æ® Ãæµ¹" << std::endl;
+				}
 			}
 		}
 	}
@@ -707,21 +715,21 @@ void CBulletShader::ReleaseObjects()
 {
 	if (m_ppObjects)
 	{
-		for (int j = 0; j < BULLETS; j++) if (m_ppObjects[j]->m_bActive) m_ppObjects[j]->Release();
+		for (int j = 0; j < m_nObject; j++) if (m_ppObjects[j]->m_bActive) m_ppObjects[j]->Release();
 		delete[] m_ppObjects;
 	}
 }
 
 void CBulletShader::ReleaseUploadBuffers()
 {
-	for (int j = 0; j < BULLETS; j++) if (m_ppObjects[j]->m_bActive) m_ppObjects[j]->ReleaseUploadBuffers();
+	for (int j = 0; j < m_nObject; j++) if (m_ppObjects[j]->m_bActive) m_ppObjects[j]->ReleaseUploadBuffers();
 }
 
 void CBulletShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
 {
 	CShader::Render(pd3dCommandList, pCamera);
 
-	for (int j = 0; j < BULLETS; j++)
+	for (int j = 0; j < m_nObject; j++)
 	{
 		if (m_ppObjects[j]->m_bActive)
 		{
@@ -745,8 +753,10 @@ CEnermyShader::~CEnermyShader()
 
 std::default_random_engine dre;
 std::uniform_real_distribution<float> uid(0, 2000.0);
-void CEnermyShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, void* pContext)
+void CEnermyShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, CScene* pScene, void* pContext)
 {
+	m_pScene = pScene;
+
 	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 3);
 	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
 	CGameObject* pTankModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/TankFree_Red.bin", this);
@@ -758,6 +768,7 @@ void CEnermyShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommand
 		((CTankObject*)m_ppObjects[h])->m_pTerrain = (CHeightMapTerrain*)pContext;
 
 		// Random
+		
 		// XMFLOAT3 xmf3RandomPosition{ uid(dre),0,uid(dre) };
 		// m_ppObjects[h]->SetPosition(xmf3RandomPosition.x, pTerrain->GetHeight(xmf3RandomPosition.x, xmf3RandomPosition.z), xmf3RandomPosition.z);
 		
@@ -769,9 +780,25 @@ void CEnermyShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommand
 
 void CEnermyShader::AnimateObjects(float fTimeElapsed)
 {
-	for (int j = 0; j < m_nObject; j++) {
-		if (m_ppObjects[j]) {
-			((CTankObject*)m_ppObjects[j])->Animate(fTimeElapsed, NULL, m_pPlayer);
+	for (int i = 0; i < m_nObject; i++) 
+	{
+		CTankObject* enermyObject = (CTankObject*)m_ppObjects[i];
+		if (enermyObject) {
+			enermyObject->Animate(fTimeElapsed, NULL, m_pPlayer);
+			for (int j = 0; j < m_pBulletShader->m_nObject; j++)
+			{
+				CBulletObject* bulletObject = (CBulletObject*)m_pBulletShader->m_ppObjects[j];
+				if (bulletObject->m_bActive)
+				{
+					if (m_pScene->CheckObjectByObjectCollisions(enermyObject, bulletObject))
+					{
+						// ÃÑ¾Ë°ú Àû °´Ã¼ Ãæµ¹
+						enermyObject->m_HP -= 20;
+						std::cout << "ÃÑ¾Ë - Àû Ãæµ¹. ÀûÀÇ HP = " << enermyObject->m_HP << std::endl;
+						bulletObject->Reset();
+					}
+				}
+			}
 		}
 	}
 }
@@ -817,8 +844,9 @@ CTreeShader::~CTreeShader()
 {
 }
 
-void CTreeShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, void* pContext)
+void CTreeShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, CScene* pScene, void* pContext)
 {
+	m_pScene = pScene;
 	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 1 * m_nObject);
 	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
 	for (int h = 0; h < m_nObject; h++)

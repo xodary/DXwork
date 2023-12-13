@@ -37,39 +37,40 @@ void CScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* p
 
 	CBulletShader* pBulletsShader = new CBulletShader();
 	pBulletsShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
-	pBulletsShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, m_pTerrain);
+	pBulletsShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, this, m_pTerrain);
 	m_ppShaders[0] = pBulletsShader;
-	AddCollisionObject(pBulletsShader);
+	// AddCollisionObject(pBulletsShader, m_ppCollisionObjects, m_nCollisionObject);
 
 	CEnermyShader* pEnermyShader = new CEnermyShader();
 	pEnermyShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
-	pEnermyShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, m_pTerrain);
+	pEnermyShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, this, m_pTerrain);
 	m_ppShaders[1] = pEnermyShader;
-	AddCollisionObject(pEnermyShader);
+	pEnermyShader->m_pBulletShader = pBulletsShader;
+	AddCollisionObject(pEnermyShader, m_ppCollisionObjects, m_nCollisionObject);
 
 	CTreeShader* pTreeShader = new CTreeShader();
 	pTreeShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
-	pTreeShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, m_pTerrain);
+	pTreeShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, this, m_pTerrain);
 	m_ppShaders[2] = pTreeShader;
-	AddCollisionObject(pTreeShader);
+	AddCollisionObject(pTreeShader, m_ppCollisionObjects, m_nCollisionObject);
 }
 
-void CScene::AddCollisionObject(CShader* pShader)
+void CScene::AddCollisionObject(CShader* pShader, CGameObject**& ppObject, int& nObject)
 {
 	int newObjects = pShader->m_nObject;
-	CGameObject** ppCollisionObjects = new CGameObject * [m_nCollisionObject + newObjects];
-	for (int i = 0; i < m_nCollisionObject; ++i)
+	CGameObject** ppCollisionObjects = new CGameObject * [nObject + newObjects];
+	for (int i = 0; i < nObject; ++i)
 	{
-		ppCollisionObjects[i] = m_ppCollisionObjects[i];
+		ppCollisionObjects[i] = ppObject[i];
 	}
 	for (int i = 0; i < newObjects; ++i)
 	{
-		ppCollisionObjects[m_nCollisionObject + i] = pShader->m_ppObjects[i];
+		ppCollisionObjects[nObject + i] = pShader->m_ppObjects[i];
 	}
-	m_nCollisionObject += newObjects;
-	m_ppCollisionObjects = ppCollisionObjects;
+	nObject += newObjects;
 
-	//std::cout << "충돌처리 할 Object갯수 : " << m_nCollisionObject << std::endl;
+	delete[] ppObject;
+	ppObject = ppCollisionObjects;
 }
 
 ID3D12RootSignature* CScene::CreateGraphicsRootSignature(ID3D12Device* pd3dDevice)
@@ -271,6 +272,10 @@ void CScene::PrepareRender(ID3D12GraphicsCommandList* pd3dCommandList)
 void CScene::AnimateObjects(float fTimeElapsed)
 {
 	((CEnermyShader*)m_ppShaders[1])->m_pPlayer = m_pPlayer;
+	for (int i = 0; i < m_nCollisionObject; i++)
+	{
+		m_ppCollisionObjects[i]->UpdateBoundingBox();
+	}
 	for (int i = 0; i < m_nShaders; i++)
 	{
 		if (m_ppShaders[i])
