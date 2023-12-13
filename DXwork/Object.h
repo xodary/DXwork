@@ -34,6 +34,7 @@ struct CB_GAMEOBJECT_INFO
 	XMFLOAT4X4						m_xmf4x4World;
 	MATERIAL						m_material;
 
+	XMFLOAT4X4						m_xmf4x4Texture;
 	UINT							m_nType;
 };
 
@@ -45,21 +46,22 @@ public:
 	CTexture(int nTextureResources, UINT nResourceType, int nSamplers, int nRootParameters);
 	virtual ~CTexture();
 
+	UINT							*m_pnResourceTypes = NULL;
+	ID3D12Resource					**m_ppd3dTextures = NULL;
+
 private:
 	int								m_nReferences = 0;
-
 	UINT							m_nTextureType;
-	UINT							*m_pnResourceTypes = NULL;
+
+	int								*m_pnRootParameterIndices = NULL;
 
 	int								m_nTextures = 0;
 	_TCHAR							(*m_ppstrTextureNames)[64] = NULL;
-	ID3D12Resource					**m_ppd3dTextures = NULL;
 	ID3D12Resource					**m_ppd3dTextureUploadBuffers;
 	DXGI_FORMAT						*m_pdxgiBufferFormats = NULL;
 	int								*m_pnBufferElements = NULL;
 
 	int								m_nRootParameters = 0;
-	int								*m_pnRootParameterIndices = NULL;
 	D3D12_GPU_DESCRIPTOR_HANDLE		*m_pd3dSrvGpuDescriptorHandles = NULL;
 
 	int								m_nSamplers = 0;
@@ -71,7 +73,7 @@ public:
 	void AddRef() { m_nReferences++; }
 	void Release() { if (--m_nReferences <= 0) delete this; }
 
-	void UpdateShaderVariable(ID3D12GraphicsCommandList* pd3dCommandList, int nParameterIndex, int nTextureIndex);
+	// void UpdateShaderVariable(ID3D12GraphicsCommandList* pd3dCommandList, int nParameterIndex, int nTextureIndex);
 	void ReleaseUploadBuffers();
 	void UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList);
 
@@ -197,7 +199,7 @@ public:
 
 	virtual void ReleaseUploadBuffers();
 
-	int FindReplicatedTexture(_TCHAR* pstrTextureName, D3D12_GPU_DESCRIPTOR_HANDLE* pd3dSrvGpuDescriptorHandle);
+	bool FindReplicatedTexture(_TCHAR* pstrTextureName, D3D12_GPU_DESCRIPTOR_HANDLE* pd3dSrvGpuDescriptorHandle);
 
 	UINT GetMeshType(UINT nIndex) { return((m_ppMeshes[nIndex]) ? m_ppMeshes[nIndex]->GetType() : 0x00); }
 

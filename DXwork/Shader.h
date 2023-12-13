@@ -188,7 +188,7 @@ class CPlayer;
 class CBulletObject;
 class CTankObject;
 
-#define BULLETS					10
+#define BULLETS					1
 class CBulletShader : public CStandardShader
 {
 public:

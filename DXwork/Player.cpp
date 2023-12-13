@@ -369,7 +369,7 @@ CTankPlayer::CTankPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd
 
 	m_pShader = new CStandardShader();
 	m_pShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
-	m_pShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 3);
+	m_pShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 6);
 
 	CGameObject* pGameObject = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/TankFree_Blue.bin", m_pShader);
 	SetChild(pGameObject);

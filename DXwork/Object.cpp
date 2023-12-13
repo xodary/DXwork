@@ -57,6 +57,7 @@ void CTexture::LoadTextureFromDDSFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCo
 {
 	m_pnResourceTypes[nIndex] = nResourceType;
 	m_ppd3dTextures[nIndex] = ::CreateTextureResourceFromDDSFile(pd3dDevice, pd3dCommandList, pszFileName, &m_ppd3dTextureUploadBuffers[nIndex], D3D12_RESOURCE_STATE_GENERIC_READ/*D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE*/);
+	//wprintf(L"%ls\n", pszFileName);
 }
 
 void CTexture::SetRootParameterIndex(int nIndex, UINT nRootParameterIndex)
@@ -84,10 +85,10 @@ void CTexture::UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList)
 	}
 }
 
-void CTexture::UpdateShaderVariable(ID3D12GraphicsCommandList* pd3dCommandList, int nParameterIndex, int nTextureIndex)
-{
-	pd3dCommandList->SetGraphicsRootDescriptorTable(m_pnRootParameterIndices[nParameterIndex], m_pd3dSrvGpuDescriptorHandles[nTextureIndex]);
-}
+//void CTexture::UpdateShaderVariable(ID3D12GraphicsCommandList* pd3dCommandList, int nParameterIndex, int nTextureIndex)
+//{
+//	pd3dCommandList->SetGraphicsRootDescriptorTable(m_pnRootParameterIndices[nParameterIndex], m_pd3dSrvGpuDescriptorHandles[nTextureIndex]);
+//}
 
 void CTexture::ReleaseShaderVariables()
 {
@@ -184,7 +185,6 @@ int CTexture::LoadTextureFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsComman
 		{
 			LoadTextureFromDDSFile(pd3dDevice, pd3dCommandList, m_ppstrTextureNames[nIndex], RESOURCE_TEXTURE2D, nIndex);
 			pShader->CreateShaderResourceView(pd3dDevice, this, nIndex);
-			m_pnRootParameterIndices[nIndex] = PARAMETER_STANDARD_TEXTURE + nIndex;
 		}
 		else
 		{
@@ -201,9 +201,35 @@ int CTexture::LoadTextureFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsComman
 				if (nParameterIndex >= 0)
 				{
 					m_pd3dSrvGpuDescriptorHandles[nIndex] = d3dSrvGpuDescriptorHandle;
-					m_pnRootParameterIndices[nIndex] = nParameterIndex;
 				}
 			}
+		}
+	}
+	else
+	{
+		char cfilename[64] = { "Model/Textures/dummy.dds" };
+
+		size_t n = 0;
+		mbstowcs_s(&n, m_ppstrTextureNames[nIndex], 64, cfilename, _TRUNCATE);
+
+		if (pParent)
+		{
+			CGameObject* pRootGameObject2 = pParent;
+			while (pRootGameObject2)
+			{
+				if (!pRootGameObject2->m_pParent) break;
+				pRootGameObject2 = pRootGameObject2->m_pParent;
+			}
+			D3D12_GPU_DESCRIPTOR_HANDLE d3dSrvGpuDescriptorHandle2;
+			if (pRootGameObject2->FindReplicatedTexture(m_ppstrTextureNames[nIndex], &d3dSrvGpuDescriptorHandle2))
+			{
+				m_pd3dSrvGpuDescriptorHandles[nIndex] = d3dSrvGpuDescriptorHandle2;
+			}
+		}
+		else
+		{
+			LoadTextureFromDDSFile(pd3dDevice, pd3dCommandList, m_ppstrTextureNames[nIndex], RESOURCE_TEXTURE2D, nIndex);
+			pShader->CreateShaderResourceView(pd3dDevice, this, nIndex);
 		}
 	}
 	return(bLoaded);
@@ -588,7 +614,7 @@ void CGameObject::RenderBoundingBox(ID3D12GraphicsCommandList* pd3dCommandList, 
 	if (m_pChild) m_pChild->RenderBoundingBox(pd3dCommandList, pCamera);
 }
 
-int CGameObject::FindReplicatedTexture(_TCHAR* pstrTextureName, D3D12_GPU_DESCRIPTOR_HANDLE* pd3dSrvGpuDescriptorHandle)
+bool CGameObject::FindReplicatedTexture(_TCHAR* pstrTextureName, D3D12_GPU_DESCRIPTOR_HANDLE* pd3dSrvGpuDescriptorHandle)
 {
 	int nParameterIndex = -1;
 
@@ -599,19 +625,20 @@ int CGameObject::FindReplicatedTexture(_TCHAR* pstrTextureName, D3D12_GPU_DESCRI
 			int nTextures = m_ppMaterials[i]->m_pTexture->GetTextures();
 			for (int j = 0; j < nTextures; j++)
 			{
+				wprintf(L"%ls\n", m_ppMaterials[i]->m_pTexture->GetTextureName(j));
+				// std::cout << m_ppMaterials[i]->m_pTexture->GetTextureName(j) << std::endl;
 				if (!_tcsncmp(m_ppMaterials[i]->m_pTexture->GetTextureName(j), pstrTextureName, _tcslen(pstrTextureName)))
 				{
 					*pd3dSrvGpuDescriptorHandle = m_ppMaterials[i]->m_pTexture->GetGpuDescriptorHandle(j);
-					nParameterIndex = m_ppMaterials[i]->m_pTexture->GetRootParameter(j);
-					return(nParameterIndex);
+					return true;
 				}
 			}
 		}
 	}
-	if (m_pSibling) if ((nParameterIndex = m_pSibling->FindReplicatedTexture(pstrTextureName, pd3dSrvGpuDescriptorHandle)) > 0) return(nParameterIndex);
-	if (m_pChild) if ((nParameterIndex = m_pChild->FindReplicatedTexture(pstrTextureName, pd3dSrvGpuDescriptorHandle)) > 0) return(nParameterIndex);
+	if (m_pSibling) if (m_pSibling->FindReplicatedTexture(pstrTextureName, pd3dSrvGpuDescriptorHandle)) return(true);
+	if (m_pChild) if (m_pChild->FindReplicatedTexture(pstrTextureName, pd3dSrvGpuDescriptorHandle)) return(true);
 
-	return(nParameterIndex);
+	return(false);
 }
 
 void CGameObject::LoadMaterialsFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, CGameObject* pParent, FILE* pInFile, CShader* pShader)
@@ -640,13 +667,11 @@ void CGameObject::LoadMaterialsFromFile(ID3D12Device* pd3dDevice, ID3D12Graphics
 			nReads = (UINT)::fread(&nMaterial, sizeof(int), 1, pInFile);
 
 			pMaterial = new CMaterial();
-			pTexture = new CTexture(7, RESOURCE_TEXTURE2D, 0, 7); //0:Albedo, 1:Specular, 2:Metallic, 3:Normal, 4:Emission, 5:DetailAlbedo, 6:DetailNormal
+			pTexture = new CTexture(6, RESOURCE_TEXTURE2D, 0, 1); //0:Albedo, 2:Metallic, 3:Normal, 4:Emission, 5:DetailAlbedo, 6:DetailNormal
 			pMaterial->SetTexture(pTexture);
-			//pMaterial->SetShader(pShader);
 			SetMaterial(nMaterial, pMaterial);
 
 			UINT nMeshType = GetMeshType(0);
-			//if (nMeshType & VERTEXT_NORMAL_TEXTURE) pMaterial->SetStandardShader();
 		}
 		else if (!strcmp(pstrToken, "<AlbedoColor>:"))
 		{
@@ -684,35 +709,37 @@ void CGameObject::LoadMaterialsFromFile(ID3D12Device* pd3dDevice, ID3D12Graphics
 		{
 			if (pTexture->LoadTextureFromFile(pd3dDevice, pd3dCommandList, pParent, pInFile, pShader, 0)) pMaterial->SetMaterialType(MATERIAL_ALBEDO_MAP);
 		}
-		else if (!strcmp(pstrToken, "<SpecularMap>:"))
+		// else if (!strcmp(pstrToken, "<SpecularMap>:"))
+		// {
+		// 	if (pTexture->LoadTextureFromFile(pd3dDevice, pd3dCommandList, pParent, pInFile, pShader, 1)) pMaterial->SetMaterialType(MATERIAL_SPECULAR_MAP);
+		// }
+		else if (!strcmp(pstrToken, "<MetallicMap>:"))
 		{
-			if (pTexture->LoadTextureFromFile(pd3dDevice, pd3dCommandList, pParent, pInFile, pShader, 1)) pMaterial->SetMaterialType(MATERIAL_SPECULAR_MAP);
+			if (pTexture->LoadTextureFromFile(pd3dDevice, pd3dCommandList, pParent, pInFile, pShader, 1)) pMaterial->SetMaterialType(MATERIAL_METALLIC_MAP);
 		}
 		else if (!strcmp(pstrToken, "<NormalMap>:"))
 		{
 			if (pTexture->LoadTextureFromFile(pd3dDevice, pd3dCommandList, pParent, pInFile, pShader, 2)) pMaterial->SetMaterialType(MATERIAL_NORMAL_MAP);
 		}
-		else if (!strcmp(pstrToken, "<MetallicMap>:"))
-		{
-			if (pTexture->LoadTextureFromFile(pd3dDevice, pd3dCommandList, pParent, pInFile, pShader, 3)) pMaterial->SetMaterialType(MATERIAL_METALLIC_MAP);
-		}
 		else if (!strcmp(pstrToken, "<EmissionMap>:"))
 		{
-			if (pTexture->LoadTextureFromFile(pd3dDevice, pd3dCommandList, pParent, pInFile, pShader, 4)) pMaterial->SetMaterialType(MATERIAL_EMISSION_MAP);
+			if (pTexture->LoadTextureFromFile(pd3dDevice, pd3dCommandList, pParent, pInFile, pShader, 3)) pMaterial->SetMaterialType(MATERIAL_EMISSION_MAP);
 		}
 		else if (!strcmp(pstrToken, "<DetailAlbedoMap>:"))
 		{
-			if (pTexture->LoadTextureFromFile(pd3dDevice, pd3dCommandList, pParent, pInFile, pShader, 5)) pMaterial->SetMaterialType(MATERIAL_DETAIL_ALBEDO_MAP);
+			if (pTexture->LoadTextureFromFile(pd3dDevice, pd3dCommandList, pParent, pInFile, pShader, 4)) pMaterial->SetMaterialType(MATERIAL_DETAIL_ALBEDO_MAP);
 		}
 		else if (!strcmp(pstrToken, "<DetailNormalMap>:"))
 		{
-			if (pTexture->LoadTextureFromFile(pd3dDevice, pd3dCommandList, pParent, pInFile, pShader, 6)) pMaterial->SetMaterialType(MATERIAL_DETAIL_NORMAL_MAP);
+			if (pTexture->LoadTextureFromFile(pd3dDevice, pd3dCommandList, pParent, pInFile, pShader, 5)) pMaterial->SetMaterialType(MATERIAL_DETAIL_NORMAL_MAP);
 		}
 		else if (!strcmp(pstrToken, "</Materials>"))
 		{
 			break;
 		}
-	}
+	}		
+	//pShader->CreateShaderResourceViews(pd3dDevice, pTexture, 0, PARAMETER_STANDARD_TEXTURE);
+	pTexture->SetRootParameterIndex(0, PARAMETER_STANDARD_TEXTURE);
 }
 
 CGameObject* CGameObject::LoadFrameHierarchyFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, CGameObject* pParent, FILE* pInFile, CShader* pShader)
@@ -939,7 +966,7 @@ CHeightMapTerrain::CHeightMapTerrain(ID3D12Device* pd3dDevice, ID3D12GraphicsCom
 	pTerrainTexture->LoadTextureFromDDSFile(pd3dDevice, pd3dCommandList, L"Image/Detail_Texture_7.dds", RESOURCE_TEXTURE2D, 1);
 	pTerrainTexture->LoadTextureFromDDSFile(pd3dDevice, pd3dCommandList, L"Image/WaveFoam.dds", RESOURCE_TEXTURE2D, 2);
 	pTerrainTexture->LoadTextureFromDDSFile(pd3dDevice, pd3dCommandList, L"Image/HeightMap(Flipped).dds", RESOURCE_TEXTURE2D, 3);
-	
+
 	CTerrainShader* pTerrainShader = new CTerrainShader();
 	pTerrainShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
 	pTerrainShader->CreateShaderVariables(pd3dDevice, pd3dCommandList);

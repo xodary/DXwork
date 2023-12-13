@@ -243,7 +243,6 @@ void CShader::CreateShaderResourceView(ID3D12Device* pd3dDevice, CTexture* pText
 		D3D12_SHADER_RESOURCE_VIEW_DESC d3dShaderResourceViewDesc = pTexture->GetShaderResourceViewDesc(nIndex);
 		pd3dDevice->CreateShaderResourceView(pShaderResource, &d3dShaderResourceViewDesc, m_d3dSrvCPUDescriptorNextHandle);
 		m_d3dSrvCPUDescriptorNextHandle.ptr += ::gnCbvSrvDescriptorIncrementSize;
-
 		pTexture->SetGpuDescriptorHandle(nIndex, m_d3dSrvGPUDescriptorNextHandle);
 		m_d3dSrvGPUDescriptorNextHandle.ptr += ::gnCbvSrvDescriptorIncrementSize;
 	}
@@ -649,7 +648,7 @@ void CBulletShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommand
 {
 	m_pScene = pScene;
 
-	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 2 * m_nObject);
+	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 6 * m_nObject);
 
 	for (int h = 0; h < m_nObject; h++)
 	{
@@ -757,7 +756,7 @@ void CEnermyShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommand
 {
 	m_pScene = pScene;
 
-	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 3);
+	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 6 * m_nObject);
 	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
 	CGameObject* pTankModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/TankFree_Red.bin", this);
 	for (int h = 0; h < m_nObject; h++)
@@ -847,7 +846,7 @@ CTreeShader::~CTreeShader()
 void CTreeShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, CScene* pScene, void* pContext)
 {
 	m_pScene = pScene;
-	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 1 * m_nObject);
+	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 6 * m_nObject);
 	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
 	for (int h = 0; h < m_nObject; h++)
 	{

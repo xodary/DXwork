@@ -263,12 +263,12 @@ float4 PSTerrain(VS_TERRAIN_OUTPUT input) : SV_TARGET
 #define MATERIAL_DETAIL_NORMAL_MAP	0x40
 
 Texture2D gtxtAlbedoTexture : register(t8);
-Texture2D gtxtSpecularTexture : register(t9);
+//Texture2D gtxtSpecularTexture : register(t9);
+Texture2D gtxtMetallicTexture : register(t9);
 Texture2D gtxtNormalTexture : register(t10);
-Texture2D gtxtMetallicTexture : register(t11);
-Texture2D gtxtEmissionTexture : register(t12);
-Texture2D gtxtDetailAlbedoTexture : register(t13);
-Texture2D gtxtDetailNormalTexture : register(t14);
+Texture2D gtxtEmissionTexture : register(t11);
+Texture2D gtxtDetailAlbedoTexture : register(t12);
+Texture2D gtxtDetailNormalTexture : register(t13);
 
 struct VS_STANDARD_INPUT
 {
@@ -313,8 +313,8 @@ float4 PSStandard(VS_STANDARD_OUTPUT input) : SV_TARGET
 
     if (gnTexturesMask & MATERIAL_ALBEDO_MAP)
         cAlbedoColor = gtxtAlbedoTexture.Sample(gSamplerState, input.uv);
-    if (gnTexturesMask & MATERIAL_SPECULAR_MAP)
-        cSpecularColor = gtxtSpecularTexture.Sample(gSamplerState, input.uv);
+    //if (gnTexturesMask & MATERIAL_SPECULAR_MAP)
+    //    cSpecularColor = gtxtSpecularTexture.Sample(gSamplerState, input.uv);
     if (gnTexturesMask & MATERIAL_NORMAL_MAP)
         cNormalColor = gtxtNormalTexture.Sample(gSamplerState, input.uv);
     if (gnTexturesMask & MATERIAL_METALLIC_MAP)
