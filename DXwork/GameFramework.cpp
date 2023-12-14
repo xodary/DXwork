@@ -628,7 +628,7 @@ void CGameFramework::MoveToNextFrame()
 
 void CGameFramework::FrameAdvance()
 {
-	system("cls");
+	// system("cls");
 
 	m_GameTimer.Tick(0.0f);
 

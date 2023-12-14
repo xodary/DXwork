@@ -45,6 +45,8 @@ void CPlayer::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsComm
 	m_pd3dcbPlayer = ::CreateBufferResource(pd3dDevice, pd3dCommandList, NULL, ncbElementBytes, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, NULL);
 	
 	m_pd3dcbPlayer->Map(0, NULL, (void**)&m_pcbMappedPlayer);
+
+	CGameObject::CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
 
 void CPlayer::UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList)
@@ -264,7 +266,6 @@ CTerrainPlayer::CTerrainPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandLi
 
 	m_pShader = new CPlayerShader();
 	m_pShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
-	m_pShader->CreateShaderVariables(pd3dDevice, pd3dCommandList);
 	m_pShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 1);
 
 	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
@@ -378,12 +379,15 @@ CTankPlayer::CTankPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 
 	m_pShader = new CStandardShader();
+	m_pShader->m_ppObjects[0] = this;
 	m_pShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
-	m_pShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 6);
+	m_pShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 10, 6);
 
 	CGameObject* pGameObject = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/TankFree_Blue.bin", m_pShader);
 	SetChild(pGameObject);
 	pGameObject->SetScale(8, 8, 8);
+	m_pShader->CreateShaderVariablesAndCreateCBV(pd3dDevice, pd3dCommandList, this);
+
 	PrepareAnimate();
 
 	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;

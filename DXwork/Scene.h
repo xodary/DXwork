@@ -20,6 +20,7 @@ public:
 	bool CheckObjectByObjectCollisions(CGameObject* pObjectA, CGameObject* pObjectB);
 
 	void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
+	void AddObjectShader(CShader* pShader);
 	void AddCollisionObject(CShader* pShader, CGameObject**& ppObject, int& nObject);
 	ID3D12RootSignature* CreateGraphicsRootSignature(ID3D12Device* pd3dDevice);
 	void PrepareRender(ID3D12GraphicsCommandList* pd3dCommandList);

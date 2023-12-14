@@ -85,11 +85,6 @@ void CTexture::UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList)
 	}
 }
 
-//void CTexture::UpdateShaderVariable(ID3D12GraphicsCommandList* pd3dCommandList, int nParameterIndex, int nTextureIndex)
-//{
-//	pd3dCommandList->SetGraphicsRootDescriptorTable(m_pnRootParameterIndices[nParameterIndex], m_pd3dSrvGpuDescriptorHandles[nTextureIndex]);
-//}
-
 void CTexture::ReleaseShaderVariables()
 {
 }
@@ -265,13 +260,6 @@ void CMaterial::SetTexture(CTexture* pTexture)
 
 void CMaterial::UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList)
 {
-	pd3dCommandList->SetGraphicsRoot32BitConstants(PARAMETER_OBJECT, 4, &m_xmf4AmbientColor, 16);
-	pd3dCommandList->SetGraphicsRoot32BitConstants(PARAMETER_OBJECT, 4, &m_xmf4AlbedoColor, 20);
-	pd3dCommandList->SetGraphicsRoot32BitConstants(PARAMETER_OBJECT, 4, &m_xmf4SpecularColor, 24);
-	pd3dCommandList->SetGraphicsRoot32BitConstants(PARAMETER_OBJECT, 4, &m_xmf4EmissiveColor, 28);
-
-	pd3dCommandList->SetGraphicsRoot32BitConstants(PARAMETER_OBJECT, 1, &m_nType, 32);
-
 	if (m_pTexture) m_pTexture->UpdateShaderVariables(pd3dCommandList);
 }
 
@@ -377,22 +365,39 @@ void CGameObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
 
 void CGameObject::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
 {
+	UINT ncbElementBytes = ((sizeof(CB_GAMEOBJECT_INFO) + 255) & ~255); //256의 배수
+	m_pd3dcbGameObject = ::CreateBufferResource(pd3dDevice, pd3dCommandList, NULL, ncbElementBytes, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, NULL);
+
+	m_pd3dcbGameObject->Map(0, NULL, (void**)&m_pcbMappedGameObject);
 }
 
 void CGameObject::UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList)
 {
-
+	if (m_pcbMappedGameObject)
+	{
+		XMStoreFloat4x4(&m_pcbMappedGameObject->m_xmf4x4World, XMMatrixTranspose(XMLoadFloat4x4(&m_xmf4x4World)));
+		if(m_ppMaterials) memcpy(&m_pcbMappedGameObject->m_nType, &m_ppMaterials[0]->m_nType, sizeof(UINT));
+	}
 }
 
-void CGameObject::UpdateShaderVariable(ID3D12GraphicsCommandList* pd3dCommandList, XMFLOAT4X4* pxmf4x4World)
-{
-	XMFLOAT4X4 xmf4x4World;
-	XMStoreFloat4x4(&xmf4x4World, XMMatrixTranspose(XMLoadFloat4x4(pxmf4x4World)));
-	pd3dCommandList->SetGraphicsRoot32BitConstants(2, 16, &xmf4x4World, 0);
-}
+//void CGameObject::UpdateShaderVariable(ID3D12GraphicsCommandList* pd3dCommandList, XMFLOAT4X4* pxmf4x4World)
+//{
+//	XMFLOAT4X4 xmf4x4World;
+//	XMStoreFloat4x4(&xmf4x4World, XMMatrixTranspose(XMLoadFloat4x4(pxmf4x4World)));
+//	pd3dCommandList->SetGraphicsRoot32BitConstants(2, 16, &xmf4x4World, 0);
+//}
 
 void CGameObject::ReleaseShaderVariables()
 {
+	if (m_pd3dcbGameObject)
+	{
+		m_pd3dcbGameObject->Unmap(0, NULL);
+		m_pd3dcbGameObject->Release();
+	}
+	for (int i = 0; i < m_nMaterials; ++i)
+	{
+		if (m_ppMaterials) m_ppMaterials[i]->ReleaseShaderVariables();
+	}
 }
 
 void CGameObject::ReleaseUploadBuffers()
@@ -424,14 +429,24 @@ void CGameObject::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pC
 {
 	OnPrepareRender();
 
-	UpdateShaderVariable(pd3dCommandList, &m_xmf4x4World);
+	UpdateShaderVariables(pd3dCommandList);
 
 	if (m_nMaterials <= 1) {
 		if ((m_nMaterials == 1) && (m_ppMaterials[0]))
 		{
-			if (m_ppMaterials[0]->m_pShader) m_ppMaterials[0]->m_pShader->Render(pd3dCommandList, pCamera);
+			if (m_ppMaterials[0]->m_pShader)
+			{
+				m_ppMaterials[0]->m_pShader->Render(pd3dCommandList, pCamera);
+			}
 			m_ppMaterials[0]->UpdateShaderVariables(pd3dCommandList);
-		}
+			if (m_ppMaterials[0]->m_pTexture)
+			{
+				m_ppMaterials[0]->m_pTexture->UpdateShaderVariables(pd3dCommandList);
+				if (m_pcbMappedGameObject) XMStoreFloat4x4(&m_pcbMappedGameObject->m_xmf4x4Texture, XMMatrixTranspose(XMLoadFloat4x4(&m_ppMaterials[0]->m_pTexture->m_xmf4x4Texture)));
+			}
+		}	
+		
+		pd3dCommandList->SetGraphicsRootDescriptorTable(PARAMETER_OBJECT, m_d3dCbvGPUDescriptorHandle);
 
 		if (m_ppMeshes)
 		{
@@ -805,6 +820,7 @@ CGameObject* CGameObject::LoadFrameHierarchyFromFile(ID3D12Device* pd3dDevice, I
 		{
 			int nChilds = 0;
 			nReads = (UINT)::fread(&nChilds, sizeof(int), 1, pInFile);
+			pGameObject->m_nObjects += nChilds;
 			if (nChilds > 0)
 			{
 				for (int i = 0; i < nChilds; i++)
@@ -894,17 +910,23 @@ CGameObject* CGameObject::FindFrame(char* pstrFrameName)
 // 
 CSkyBox::CSkyBox(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature) : CGameObject(1, 1)
 {
+	CreateShaderVariables(pd3dDevice, pd3dCommandList);
+
 	CSkyBoxMesh* pSkyBoxMesh = new CSkyBoxMesh(pd3dDevice, pd3dCommandList, 2000.0f, 2000.0f, 2000.0f);
 	SetMesh(0, pSkyBoxMesh);
 
 	CTexture* pSkyBoxTexture = new CTexture(1, RESOURCE_TEXTURE_CUBE, 0, 1);
 	pSkyBoxTexture->LoadTextureFromDDSFile(pd3dDevice, pd3dCommandList, L"SkyBox/SkyBox_0.dds", RESOURCE_TEXTURE_CUBE, 0);
+	
+	UINT ncbElementBytes = ((sizeof(CB_GAMEOBJECT_INFO) + 255) & ~255); //256의 배수
 
 	CSkyBoxShader* pSkyBoxShader = new CSkyBoxShader();
+	pSkyBoxShader->m_ppObjects[0] = this;
 	pSkyBoxShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
-	pSkyBoxShader->CreateShaderVariables(pd3dDevice, pd3dCommandList);
-	pSkyBoxShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 1);
+	pSkyBoxShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 1, 1);
 	pSkyBoxShader->CreateShaderResourceViews(pd3dDevice, pSkyBoxTexture, 0, PARAMETER_SKYBOX_CUBE_TEXTURE);
+	D3D12_GPU_DESCRIPTOR_HANDLE d3dCbvGPUDescriptorHandle = pSkyBoxShader->CreateConstantBufferView(pd3dDevice, m_pd3dcbGameObject, ncbElementBytes);
+	SetCbvGPUDescriptorHandle(d3dCbvGPUDescriptorHandle);
 
 	CMaterial* pSkyBoxMaterial = new CMaterial();
 	pSkyBoxMaterial->SetTexture(pSkyBoxTexture);
@@ -967,12 +989,16 @@ CHeightMapTerrain::CHeightMapTerrain(ID3D12Device* pd3dDevice, ID3D12GraphicsCom
 	pTerrainTexture->LoadTextureFromDDSFile(pd3dDevice, pd3dCommandList, L"Image/Detail_Texture_7.dds", RESOURCE_TEXTURE2D, 1);
 	pTerrainTexture->LoadTextureFromDDSFile(pd3dDevice, pd3dCommandList, L"Image/WaveFoam.dds", RESOURCE_TEXTURE2D, 2);
 	pTerrainTexture->LoadTextureFromDDSFile(pd3dDevice, pd3dCommandList, L"Image/HeightMap(Flipped).dds", RESOURCE_TEXTURE2D, 3);
+	
+	UINT ncbElementBytes = ((sizeof(CB_GAMEOBJECT_INFO) + 255) & ~255); //256의 배수
 
 	CTerrainShader* pTerrainShader = new CTerrainShader();
+	pTerrainShader->m_ppObjects[0] = this;
 	pTerrainShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
-	pTerrainShader->CreateShaderVariables(pd3dDevice, pd3dCommandList);
-	pTerrainShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 4);
+	pTerrainShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 1, 4);
 	pTerrainShader->CreateShaderResourceViews(pd3dDevice, pTerrainTexture, 0, PARAMETER_TERRAIN);
+	D3D12_GPU_DESCRIPTOR_HANDLE d3dCbvGPUDescriptorHandle = pTerrainShader->CreateConstantBufferView(pd3dDevice, m_pd3dcbGameObject, ncbElementBytes);
+	SetCbvGPUDescriptorHandle(d3dCbvGPUDescriptorHandle);
 
 	CMaterial* pTerrainMaterial = new CMaterial();
 	pTerrainMaterial->SetTexture(pTerrainTexture);
@@ -1017,17 +1043,23 @@ CRippleWater::CRippleWater(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* 
 			SetMesh(x + (z * cxBlocks), pGridMesh);
 		}
 	}
+	
+	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 
 	CTexture* pWaterTexture = new CTexture(3, RESOURCE_TEXTURE2D, 0, 1);
 	pWaterTexture->LoadTextureFromDDSFile(pd3dDevice, pd3dCommandList, L"Image/Water_Base_Texture_0.dds", RESOURCE_TEXTURE2D, 0);
 	pWaterTexture->LoadTextureFromDDSFile(pd3dDevice, pd3dCommandList, L"Image/Water_Detail_Texture_0.dds", RESOURCE_TEXTURE2D, 1);
 	pWaterTexture->LoadTextureFromDDSFile(pd3dDevice, pd3dCommandList, L"Image/Lava(Diffuse).dds", RESOURCE_TEXTURE2D, 2);
 
+	UINT ncbElementBytes = ((sizeof(CB_GAMEOBJECT_INFO) + 255) & ~255); //256의 배수
+
 	CRippleWaterShader* pRippleWaterShader = new CRippleWaterShader();
+	pRippleWaterShader->m_ppObjects[0] = this;
 	pRippleWaterShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
-	pRippleWaterShader->CreateShaderVariables(pd3dDevice, pd3dCommandList);
-	pRippleWaterShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 3);
+	pRippleWaterShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 1, 3);
 	pRippleWaterShader->CreateShaderResourceViews(pd3dDevice, pWaterTexture, 0, PARAMETER_WATER_TEXTURE);
+	D3D12_GPU_DESCRIPTOR_HANDLE d3dCbvGPUDescriptorHandle = pRippleWaterShader->CreateConstantBufferView(pd3dDevice, m_pd3dcbGameObject, ncbElementBytes);
+	SetCbvGPUDescriptorHandle(d3dCbvGPUDescriptorHandle);
 
 	CMaterial* pWaterMaterial = new CMaterial();
 	pWaterMaterial->SetTexture(pWaterTexture);

@@ -15,14 +15,13 @@ struct MATERIAL
 	float4					m_cDiffuse;
 	float4					m_cSpecular; //a = power
 	float4					m_cEmissive;
-	
-	matrix					gmtxTexture;
 };
 
 cbuffer cbGameObjectInfo : register(b2)
 {
 	matrix		gmtxGameObject : packoffset(c0);
-	MATERIAL	gMaterial : packoffset(c4);
+    MATERIAL	gMaterial : packoffset(c4);
+    matrix		gmtxTexture: packoffset(c8);
 	uint		gnTexturesMask : packoffset(c12);
 };
 

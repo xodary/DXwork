@@ -15,7 +15,6 @@ CShader::CShader()
 
 CShader::~CShader()
 {
-	ReleaseShaderVariables();
 	if (m_pd3dPipelineState) m_pd3dPipelineState->Release();
 
 	if (m_pd3dCbvSrvDescriptorHeap) m_pd3dCbvSrvDescriptorHeap->Release();
@@ -196,9 +195,25 @@ void CShader::CreateCbvSrvDescriptorHeaps(ID3D12Device* pd3dDevice, int nConstan
 	m_d3dSrvCPUDescriptorStartHandle.ptr = m_d3dCbvCPUDescriptorStartHandle.ptr + (::gnCbvSrvDescriptorIncrementSize * nConstantBufferViews);
 	m_d3dSrvGPUDescriptorStartHandle.ptr = m_d3dCbvGPUDescriptorStartHandle.ptr + (::gnCbvSrvDescriptorIncrementSize * nConstantBufferViews);
 
+	m_d3dCbvCPUDescriptorNextHandle = m_d3dCbvCPUDescriptorStartHandle;
+	m_d3dCbvGPUDescriptorNextHandle = m_d3dCbvGPUDescriptorStartHandle;
 	m_d3dSrvCPUDescriptorNextHandle = m_d3dSrvCPUDescriptorStartHandle;
 	m_d3dSrvGPUDescriptorNextHandle = m_d3dSrvGPUDescriptorStartHandle;
 }
+
+D3D12_GPU_DESCRIPTOR_HANDLE CShader::CreateConstantBufferView(ID3D12Device* pd3dDevice, ID3D12Resource* pd3dConstantBuffer, UINT nStride)
+{
+	D3D12_CONSTANT_BUFFER_VIEW_DESC d3dCBVDesc;
+	d3dCBVDesc.SizeInBytes = nStride;
+	d3dCBVDesc.BufferLocation = pd3dConstantBuffer->GetGPUVirtualAddress();
+	pd3dDevice->CreateConstantBufferView(&d3dCBVDesc, m_d3dCbvCPUDescriptorNextHandle);
+	D3D12_GPU_DESCRIPTOR_HANDLE d3dCbvGPUDescriptorHandle = m_d3dCbvGPUDescriptorNextHandle;
+	m_d3dCbvCPUDescriptorNextHandle.ptr += ::gnCbvSrvDescriptorIncrementSize;
+	m_d3dCbvGPUDescriptorNextHandle.ptr += ::gnCbvSrvDescriptorIncrementSize;
+
+	return(d3dCbvGPUDescriptorHandle);
+}
+
 
 void CShader::CreateConstantBufferViews(ID3D12Device* pd3dDevice, int nConstantBufferViews, ID3D12Resource* pd3dConstantBuffers, UINT nStride)
 {
@@ -208,9 +223,9 @@ void CShader::CreateConstantBufferViews(ID3D12Device* pd3dDevice, int nConstantB
 	for (int j = 0; j < nConstantBufferViews; j++)
 	{
 		d3dCBVDesc.BufferLocation = d3dGpuVirtualAddress + (nStride * j);
-		D3D12_CPU_DESCRIPTOR_HANDLE d3dCbvCPUDescriptorHandle;
-		d3dCbvCPUDescriptorHandle.ptr = m_d3dCbvCPUDescriptorStartHandle.ptr + (::gnCbvSrvDescriptorIncrementSize * j);
-		pd3dDevice->CreateConstantBufferView(&d3dCBVDesc, d3dCbvCPUDescriptorHandle);
+		pd3dDevice->CreateConstantBufferView(&d3dCBVDesc, m_d3dCbvCPUDescriptorNextHandle);
+		m_d3dCbvCPUDescriptorNextHandle.ptr += ::gnCbvSrvDescriptorIncrementSize;
+		m_d3dCbvGPUDescriptorNextHandle.ptr += ::gnCbvSrvDescriptorIncrementSize;
 	}
 }
 
@@ -248,10 +263,22 @@ void CShader::CreateShaderResourceView(ID3D12Device* pd3dDevice, CTexture* pText
 	}
 }
 
+void CShader::CreateShaderVariablesAndCreateCBV(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, CGameObject* pObject)
+{
+	pObject->CreateShaderVariables(pd3dDevice, pd3dCommandList);
+	UINT ncbElementBytes = ((sizeof(CB_GAMEOBJECT_INFO) + 255) & ~255); //256ÀÇ ¹è¼ö
+	D3D12_GPU_DESCRIPTOR_HANDLE d3dCbvGPUDescriptorHandle = CreateConstantBufferView(pd3dDevice, pObject->m_pd3dcbGameObject, ncbElementBytes);
+	pObject->SetCbvGPUDescriptorHandle(d3dCbvGPUDescriptorHandle);
+
+	if (pObject->m_pSibling) CreateShaderVariablesAndCreateCBV(pd3dDevice, pd3dCommandList, pObject->m_pSibling);
+	if (pObject->m_pChild) CreateShaderVariablesAndCreateCBV(pd3dDevice, pd3dCommandList, pObject->m_pChild);
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 CPlayerShader::CPlayerShader()
 {
+	
 }
 
 CPlayerShader::~CPlayerShader()
@@ -298,6 +325,8 @@ void CPlayerShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature* 
 //
 CStandardShader::CStandardShader()
 {
+	m_nObject = 1;
+	m_ppObjects = new CGameObject * [m_nObject];
 }
 
 CStandardShader::~CStandardShader()
@@ -366,6 +395,8 @@ void CStandardShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature
 //
 CSkyBoxShader::CSkyBoxShader()
 {
+	m_nObject = 1;
+	m_ppObjects = new CGameObject * [m_nObject];
 }
 
 CSkyBoxShader::~CSkyBoxShader()
@@ -431,6 +462,8 @@ void CSkyBoxShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature* 
 //
 CRippleWaterShader::CRippleWaterShader()
 {
+	m_nObject = 1;
+	m_ppObjects = new CGameObject * [m_nObject];
 }
 
 CRippleWaterShader::~CRippleWaterShader()
@@ -498,6 +531,8 @@ void CRippleWaterShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignat
 // CTerrainShader
 CTerrainShader::CTerrainShader()
 {
+	m_nObject = 1;
+	m_ppObjects = new CGameObject * [m_nObject];
 }
 
 CTerrainShader::~CTerrainShader()
@@ -648,20 +683,20 @@ void CBulletShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommand
 {
 	m_pScene = pScene;
 
-	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 6 * m_nObject);
-
+	CreateCbvSrvDescriptorHeaps(pd3dDevice, 10 * m_nObject, 6 * m_nObject);
+	CGameObject* pBulletModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/¬³TF_Missile_Blue.bin", this);
 	for (int h = 0; h < m_nObject; h++)
 	{
-		CGameObject* pBulletModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/¬³TF_Missile_Blue.bin", this);
 		m_ppObjects[h] = new CBulletObject(300.0f);
 		((CBulletObject*)m_ppObjects[h])->m_fScale = 2.0f;
 		m_ppObjects[h]->SetChild(pBulletModel);
 		m_ppObjects[h]->SetMovingSpeed(120.0f);
 		m_ppObjects[h]->SetActive(false);
 		m_ppObjects[h]->CreateShaderVariables(pd3dDevice, pd3dCommandList);
+		CreateShaderVariablesAndCreateCBV(pd3dDevice, pd3dCommandList, m_ppObjects[h]);
 		pBulletModel->AddRef();
 	}
-	CreateShaderVariables(pd3dDevice, pd3dCommandList);
+	UINT ncbElementBytes = ((sizeof(CB_GAMEOBJECT_INFO) + 255) & ~255);
 }
 
 void CBulletShader::FireBullet(CPlayer* pPlayer)
@@ -735,6 +770,7 @@ void CBulletShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* 
 			m_ppObjects[j]->Render(pd3dCommandList, pCamera);
 		}
 	}
+	pd3dCommandList->SetGraphicsRootDescriptorTable(PARAMETER_OBJECT, m_d3dCbvGPUDescriptorStartHandle);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -756,14 +792,14 @@ void CEnermyShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommand
 {
 	m_pScene = pScene;
 
-	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 6 * m_nObject);
 	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
+	CreateCbvSrvDescriptorHeaps(pd3dDevice, 10 * m_nObject, 6 * m_nObject); 
 	CGameObject* pTankModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/TankFree_Red.bin", this);
 	for (int h = 0; h < m_nObject; h++)
 	{
 		m_ppObjects[h] = new CTankObject();
 		m_ppObjects[h]->SetChild(pTankModel);
-		m_ppObjects[h]->CreateShaderVariables(pd3dDevice, pd3dCommandList);
+		CreateShaderVariablesAndCreateCBV(pd3dDevice, pd3dCommandList, m_ppObjects[h]);
 		((CTankObject*)m_ppObjects[h])->m_pTerrain = (CHeightMapTerrain*)pContext;
 
 		// Random
@@ -774,7 +810,6 @@ void CEnermyShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommand
 		XMFLOAT3 xmf3Position{ pTerrain->GetWidth() * 0.5f + 10 + 50, 0, pTerrain->GetLength() * 0.5f + 10 + 50 };
 		m_ppObjects[h]->SetPosition(xmf3Position.x, pTerrain->GetHeight(xmf3Position.x, xmf3Position.z), xmf3Position.z);
 	}
-	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
 
 void CEnermyShader::AnimateObjects(float fTimeElapsed)
@@ -824,7 +859,6 @@ void CEnermyShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* 
 	{
 		if (m_ppObjects[j])
 		{
-			//m_ppObjects[j]->UpdateTransform(NULL);
 			m_ppObjects[j]->Render(pd3dCommandList, pCamera);
 		}
 	}
@@ -846,7 +880,7 @@ CTreeShader::~CTreeShader()
 void CTreeShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, CScene* pScene, void* pContext)
 {
 	m_pScene = pScene;
-	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 6 * m_nObject);
+	CreateCbvSrvDescriptorHeaps(pd3dDevice, 10 * m_nObject, 6 * m_nObject);
 	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
 	for (int h = 0; h < m_nObject; h++)
 	{
@@ -854,8 +888,7 @@ void CTreeShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandLi
 		m_ppObjects[h] = new CGameObject(0, 0);
 		m_ppObjects[h]->SetScale(10, 10, 10);
 		m_ppObjects[h]->SetChild(pTreeModel);
-		m_ppObjects[h]->CreateShaderVariables(pd3dDevice, pd3dCommandList);
-
+		CreateShaderVariablesAndCreateCBV(pd3dDevice, pd3dCommandList, m_ppObjects[h]);
 		// Random 
 		// XMFLOAT3 xmf3RandomPosition{ uid(dre),0,uid(dre) };
 		// while (pTerrain->GetHeight(xmf3RandomPosition.x, xmf3RandomPosition.z) < 150.0f)
@@ -865,7 +898,6 @@ void CTreeShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandLi
 		XMFLOAT3 xmf3Position{ pTerrain->GetWidth() * 0.5f + 10, 0, pTerrain->GetLength() * 0.5f + 10 + 50  };
 		m_ppObjects[h]->SetPosition(xmf3Position.x, pTerrain->GetHeight(xmf3Position.x, xmf3Position.z), xmf3Position.z);
 	}
-	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
 
 void CTreeShader::AnimateObjects(float fTimeElapsed)

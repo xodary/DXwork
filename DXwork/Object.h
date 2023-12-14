@@ -33,7 +33,6 @@ struct CB_GAMEOBJECT_INFO
 {
 	XMFLOAT4X4						m_xmf4x4World;
 	MATERIAL						m_material;
-
 	XMFLOAT4X4						m_xmf4x4Texture;
 	UINT							m_nType;
 };
@@ -67,6 +66,11 @@ private:
 	int								m_nSamplers = 0;
 	D3D12_GPU_DESCRIPTOR_HANDLE		*m_pd3dSamplerGpuDescriptorHandles = NULL;
 
+public:
+	int 							m_nRows = 1;
+	int 							m_nCols = 1;
+
+	XMFLOAT4X4						m_xmf4x4Texture;
 
 public:
 
@@ -149,6 +153,7 @@ class CGameObject
 {
 private:
 	int m_nReferences = 0;
+
 public:
 	void AddRef();
 	void Release();
@@ -195,7 +200,7 @@ public:
 	virtual void UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList);
 	virtual void ReleaseShaderVariables();
 
-	virtual void UpdateShaderVariable(ID3D12GraphicsCommandList* pd3dCommandList, XMFLOAT4X4* pxmf4x4World);
+	//virtual void UpdateShaderVariable(ID3D12GraphicsCommandList* pd3dCommandList, XMFLOAT4X4* pxmf4x4World);
 
 	virtual void ReleaseUploadBuffers();
 
@@ -214,6 +219,8 @@ public:
 	void PrintBoundingBox();
 
 	bool							m_bActive = true;
+
+	int								m_nObjects = 1;
 
 	int								m_nMeshes = 0;
 	CMesh							**m_ppMeshes = NULL;
@@ -241,6 +248,17 @@ public:
 	XMFLOAT3						m_xmf3MovingDirection = XMFLOAT3(0.0f, 0.0f, 1.0f);
 
 	XMFLOAT3						m_xmf3BeforeCollidedPosition = XMFLOAT3(0.0f, 0.0f, 0.0f);
+
+	D3D12_GPU_DESCRIPTOR_HANDLE		m_d3dCbvGPUDescriptorHandle;
+	void SetCbvGPUDescriptorHandle(D3D12_GPU_DESCRIPTOR_HANDLE d3dCbvGPUDescriptorHandle) { m_d3dCbvGPUDescriptorHandle = d3dCbvGPUDescriptorHandle; }
+	void SetCbvGPUDescriptorHandlePtr(UINT64 nCbvGPUDescriptorHandlePtr) 
+	{ 
+		m_d3dCbvGPUDescriptorHandle.ptr = nCbvGPUDescriptorHandlePtr; 
+		if (m_pSibling) m_pSibling->SetCbvGPUDescriptorHandlePtr(nCbvGPUDescriptorHandlePtr);
+		if (m_pChild) m_pChild->SetCbvGPUDescriptorHandlePtr(nCbvGPUDescriptorHandlePtr);
+	}
+	D3D12_GPU_DESCRIPTOR_HANDLE GetCbvGPUDescriptorHandle() { return(m_d3dCbvGPUDescriptorHandle); }
+
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
