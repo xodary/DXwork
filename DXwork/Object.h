@@ -158,7 +158,7 @@ public:
 	void AddRef();
 	void Release();
 
-	CGameObject(int nMeshes, int nMaterials);
+	CGameObject(int nMeshes=1, int nMaterials=1);
 	~CGameObject();
 
 	void UpdateTransform(XMFLOAT4X4* pxmf4x4Parent=NULL);
@@ -182,6 +182,7 @@ public:
 	void SetRight(XMFLOAT3 xmf3Right);
 	void SetUp(XMFLOAT3 xmf3Up);
 	void SetLook(XMFLOAT3 xmf3Look);
+	void SetLookAt(XMFLOAT3& xmf3Target, XMFLOAT3& xmf3Up);
 	void SetScale(float x, float y, float z);
 	void SetBoundingBoxMesh(int nIndex, CBoundingBoxMesh* pMesh);
 	void SetMovingDirection(XMFLOAT3& xmf3MovingDirection) { m_xmf3MovingDirection = Vector3::Normalize(xmf3MovingDirection); }
@@ -292,8 +293,8 @@ public:
 	float GetHeight(float x, float z, bool bReverseQuad = false) { return(m_pHeightMapImage->GetHeight(x, z, bReverseQuad) * m_xmf3Scale.y); } //World
 	XMFLOAT3 GetNormal(float x, float z) { return(m_pHeightMapImage->GetHeightMapNormal(int(x / m_xmf3Scale.x), int(z / m_xmf3Scale.z))); }
 
-	int GetHeightMapWidth() { return(m_pHeightMapImage->GetHeightMapWidth()); }
-	int GetHeightMapLength() { return(m_pHeightMapImage->GetHeightMapLength()); }
+	int GetHeightMapWidth() { return(m_pHeightMapImage->GetRawImageWidth()); }
+	int GetHeightMapLength() { return(m_pHeightMapImage->GetRawImageLength()); }
 
 	XMFLOAT3 GetScale() { return(m_xmf3Scale); }
 	float GetWidth() { return(m_nWidth * m_xmf3Scale.x); }
@@ -364,4 +365,18 @@ public:
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent=NULL, CPlayer* pPlayer=NULL);
 	virtual void PrepareAnimate();
 	void SetUpByTurret(CPlayer* pPlayer);
+};
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+class CGrassObject : public CGameObject
+{
+public:
+	CGrassObject();
+	virtual ~CGrassObject();
+
+	virtual void Animate(float fTimeElapsed);
+
+	float m_fRotationAngle = 0.0f;
+	float m_fRotationDelta = 1.0f;
 };
