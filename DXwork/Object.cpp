@@ -649,7 +649,7 @@ bool CGameObject::FindReplicatedTexture(_TCHAR* pstrTextureName, D3D12_GPU_DESCR
 			int nTextures = m_ppMaterials[i]->m_pTexture->GetTextures();
 			for (int j = 0; j < nTextures; j++)
 			{
-				wprintf(L"%ls\n", m_ppMaterials[i]->m_pTexture->GetTextureName(j));
+				// wprintf(L"%ls\n", m_ppMaterials[i]->m_pTexture->GetTextureName(j));
 				// std::cout << m_ppMaterials[i]->m_pTexture->GetTextureName(j) << std::endl;
 				if (!_tcsncmp(m_ppMaterials[i]->m_pTexture->GetTextureName(j), pstrTextureName, _tcslen(pstrTextureName)))
 				{
@@ -929,7 +929,6 @@ CSkyBox::CSkyBox(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dComman
 	UINT ncbElementBytes = ((sizeof(CB_GAMEOBJECT_INFO) + 255) & ~255); //256의 배수
 
 	CSkyBoxShader* pSkyBoxShader = new CSkyBoxShader();
-	pSkyBoxShader->m_ppObjects[0] = this;
 	pSkyBoxShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
 	pSkyBoxShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 1, 1);
 	pSkyBoxShader->CreateShaderResourceViews(pd3dDevice, pSkyBoxTexture, 0, PARAMETER_SKYBOX_CUBE_TEXTURE);
@@ -963,13 +962,12 @@ CHeightMapTerrain::CHeightMapTerrain(ID3D12Device* pd3dDevice, ID3D12GraphicsCom
 {
 	m_nWidth = nWidth;
 	m_nLength = nLength;
+	m_xmf3Scale = xmf3Scale;
 
 	int cxQuadsPerBlock = nBlockWidth - 1;
 	int czQuadsPerBlock = nBlockLength - 1;
 
-	m_xmf3Scale = xmf3Scale;
-
-	m_pHeightMapImage = new CHeightMapImage(pFileName, nWidth, nLength, xmf3Scale);
+	m_pHeightMapImage = new CHeightMapImage(pFileName, nWidth, nLength);
 
 	long cxBlocks = (m_nWidth - 1) / cxQuadsPerBlock;
 	long czBlocks = (m_nLength - 1) / czQuadsPerBlock;
@@ -1000,8 +998,12 @@ CHeightMapTerrain::CHeightMapTerrain(ID3D12Device* pd3dDevice, ID3D12GraphicsCom
 	
 	UINT ncbElementBytes = ((sizeof(CB_GAMEOBJECT_INFO) + 255) & ~255); //256의 배수
 
+#ifdef _WITH_TERRAIN_TESSELATION
+	CTerrainTessellationShader* pTerrainShader = new CTerrainTessellationShader();
+#else
 	CTerrainShader* pTerrainShader = new CTerrainShader();
-	pTerrainShader->m_ppObjects[0] = this;
+#endif
+
 	pTerrainShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
 	pTerrainShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 1, 4);
 	pTerrainShader->CreateShaderResourceViews(pd3dDevice, pTerrainTexture, 0, PARAMETER_TERRAIN);
@@ -1013,6 +1015,13 @@ CHeightMapTerrain::CHeightMapTerrain(ID3D12Device* pd3dDevice, ID3D12GraphicsCom
 	pTerrainMaterial->SetShader(pTerrainShader);
 
 	SetMaterial(0, pTerrainMaterial);
+}
+
+float CHeightMapTerrain::GetHeight(float fx, float fz) //World Coordinates
+{
+	float fHeight = m_pHeightMapImage->GetHeight(fx, fz, m_xmf3Scale);
+
+	return(fHeight);
 }
 
 CHeightMapTerrain::~CHeightMapTerrain(void)
@@ -1062,7 +1071,6 @@ CRippleWater::CRippleWater(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* 
 	UINT ncbElementBytes = ((sizeof(CB_GAMEOBJECT_INFO) + 255) & ~255); //256의 배수
 
 	CRippleWaterShader* pRippleWaterShader = new CRippleWaterShader();
-	pRippleWaterShader->m_ppObjects[0] = this;
 	pRippleWaterShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
 	pRippleWaterShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 1, 3);
 	pRippleWaterShader->CreateShaderResourceViews(pd3dDevice, pWaterTexture, 0, PARAMETER_WATER_TEXTURE);
@@ -1111,19 +1119,34 @@ void CTankObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent, CPlayer
 	XMFLOAT3 xmf3Scale = m_pTerrain->GetScale();
 	XMFLOAT3 xmf3PlayerPosition = GetPosition();
 	int z = (int)(xmf3PlayerPosition.z / xmf3Scale.z);
-	bool bReverseQuad = ((z % 2) != 0);
-	float fHeight = m_pTerrain->GetHeight(xmf3PlayerPosition.x, xmf3PlayerPosition.z, bReverseQuad) + 6.0f;
-	XMFLOAT3 xmf3Normal = m_pTerrain->GetNormal(xmf3PlayerPosition.x, xmf3PlayerPosition.z);
+	//bool bReverseQuad = ((z % 2) != 0);
+	float fHeight = m_pTerrain->GetHeight(xmf3PlayerPosition.x, xmf3PlayerPosition.z) + 6.0f;
+	XMFLOAT3 terrainNormal = m_pTerrain->GetNormal(xmf3PlayerPosition.x, xmf3PlayerPosition.z);
 	XMFLOAT3 xmf3Look = Vector3::Subtract(((CGameObject*)pPlayer)->GetPosition(), GetPosition());
 	xmf3Look = Vector3::Normalize(XMFLOAT3(xmf3Look.x, 0.0f, xmf3Look.z));
+
+	XMVECTOR vTerrainNormal = XMLoadFloat3(&terrainNormal);
+	XMFLOAT3 xmf3Up = GetUp();
+	XMVECTOR vTankNormal = XMLoadFloat3(&xmf3Up);
+	XMVECTOR lerpedVector = XMVectorLerp(vTerrainNormal, vTankNormal, 0.4f);
+
+	XMStoreFloat3(&xmf3Up, lerpedVector);
 	XMFLOAT3 xmf3Right = GetRight();
 
-	XMStoreFloat3(&xmf3Right, XMVector3Cross(XMLoadFloat3(&xmf3Normal), XMLoadFloat3(&xmf3Look)));
-	XMStoreFloat3(&xmf3Look, XMVector3Cross(XMLoadFloat3(&xmf3Right), XMLoadFloat3(&xmf3Normal)));
+	XMStoreFloat3(&xmf3Right, XMVector3Cross(XMLoadFloat3(&xmf3Up), XMLoadFloat3(&xmf3Look)));
+	XMStoreFloat3(&xmf3Look, XMVector3Cross(XMLoadFloat3(&xmf3Right), XMLoadFloat3(&xmf3Up)));
+
+	xmf3Right = Vector3::Normalize(xmf3Right);
+	xmf3Up = Vector3::Normalize(xmf3Up);
+	xmf3Look = Vector3::Normalize(xmf3Look);
+	
+	SetRight(xmf3Right);
+	SetUp(xmf3Up);
+	SetLook(xmf3Look);
 
 	XMFLOAT4X4 xmf4x4RUL = Matrix4x4::Identity();
 	xmf4x4RUL._11 = xmf3Right.x; xmf4x4RUL._12 = xmf3Right.y; xmf4x4RUL._13 = xmf3Right.z;
-	xmf4x4RUL._21 = xmf3Normal.x; xmf4x4RUL._22 = xmf3Normal.y; xmf4x4RUL._23 = xmf3Normal.z;
+	xmf4x4RUL._21 = xmf3Up.x; xmf4x4RUL._22 = xmf3Up.y; xmf4x4RUL._23 = xmf3Up.z;
 	xmf4x4RUL._31 = xmf3Look.x; xmf4x4RUL._32 = xmf3Look.y; xmf4x4RUL._33 = xmf3Look.z;
 	m_xmf4x4Transform = Matrix4x4::Multiply(xmf4x4RUL, XMMatrixScaling(p_fScale, p_fScale, p_fScale));
 	xmf3PlayerPosition.y = fHeight;

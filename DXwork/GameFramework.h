@@ -6,13 +6,15 @@
 #include "Player.h"
 #include "Scene.h"
 
-struct VS_CB_TIME_INFO
+struct CB_FRAMEWORK_INFO
 {
-	float m_fCurrentTime;
-	float m_fElapsedTime;
-	float m_fxCursorPos;
-	float m_fyCursorPos;
+	float					m_fCurrentTime;
+	float					m_fElapsedTime;
+	UINT					m_nRenderMode;
 };
+
+#define DYNAMIC_TESSELLATION		0x10
+#define DEBUG_TESSELLATION			0x20
 
 class CGameFramework
 {
@@ -98,9 +100,9 @@ private:
 
 	_TCHAR						m_pszFrameRate[50];
 
-	ID3D12Resource*				m_pd3dcbTime = NULL;
-	VS_CB_TIME_INFO*			m_pcbMappedTime = NULL;
-
 	bool						m_bRenderBoundingBox = false;
+
+	ID3D12Resource*				m_pd3dcbFrameworkInfo = NULL;
+	CB_FRAMEWORK_INFO*			m_pcbMappedFrameworkInfo = NULL;
 };
 

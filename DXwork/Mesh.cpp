@@ -204,72 +204,61 @@ CRawFormatImage::~CRawFormatImage()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 
-CHeightMapImage::CHeightMapImage(LPCTSTR pFileName, int nWidth, int nLength, XMFLOAT3 xmf3Scale) : CRawFormatImage(pFileName, nWidth, nLength, true)
+CHeightMapImage::CHeightMapImage(LPCTSTR pFileName, int nWidth, int nLength) : CRawFormatImage(pFileName, nWidth, nLength, true)
 {
-	m_xmf3Scale = xmf3Scale;
 }
 
 CHeightMapImage::~CHeightMapImage()
 {
 }
 
-XMFLOAT3 CHeightMapImage::GetHeightMapNormal(int x, int z)
+XMFLOAT3 CHeightMapImage::GetHeightMapNormal(int x, int z, XMFLOAT3 xmf3Scale)
 {
 	if ((x < 0.0f) || (z < 0.0f) || (x >= m_nWidth) || (z >= m_nLength)) return(XMFLOAT3(0.0f, 1.0f, 0.0f));
 
 	int nHeightMapIndex = x + (z * m_nWidth);
 	int xHeightMapAdd = (x < (m_nWidth - 1)) ? 1 : -1;
 	int zHeightMapAdd = (z < (m_nLength - 1)) ? m_nWidth : -m_nWidth;
-	float y1 = (float)m_pRawImagePixels[nHeightMapIndex] * m_xmf3Scale.y;
-	float y2 = (float)m_pRawImagePixels[nHeightMapIndex + xHeightMapAdd] * m_xmf3Scale.y;
-	float y3 = (float)m_pRawImagePixels[nHeightMapIndex + zHeightMapAdd] * m_xmf3Scale.y;
-	XMFLOAT3 xmf3Edge1 = XMFLOAT3(0.0f, y3 - y1, m_xmf3Scale.z);
-	XMFLOAT3 xmf3Edge2 = XMFLOAT3(m_xmf3Scale.x, y2 - y1, 0.0f);
+	float y1 = (float)m_pRawImagePixels[nHeightMapIndex] * xmf3Scale.y;
+	float y2 = (float)m_pRawImagePixels[nHeightMapIndex + xHeightMapAdd] * xmf3Scale.y;
+	float y3 = (float)m_pRawImagePixels[nHeightMapIndex + zHeightMapAdd] * xmf3Scale.y;
+	XMFLOAT3 xmf3Edge1 = XMFLOAT3(0.0f, y3 - y1, xmf3Scale.z);
+	XMFLOAT3 xmf3Edge2 = XMFLOAT3(xmf3Scale.x, y2 - y1, 0.0f);
 	XMFLOAT3 xmf3Normal = Vector3::CrossProduct(xmf3Edge1, xmf3Edge2, true);
 
 	return(xmf3Normal);
 }
 
-#define _WITH_APPROXIMATE_OPPOSITE_CORNER
-
-float CHeightMapImage::GetHeight(float fx, float fz, bool bReverseQuad)
+float CHeightMapImage::GetInterpolatedHeight(int x, int z, float xFractional, float zFractional, bool bReverseQuad)
 {
-	fx = fx / m_xmf3Scale.x;
-	fz = fz / m_xmf3Scale.z;
-	if ((fx < 0.0f) || (fz < 0.0f) || (fx >= m_nWidth) || (fz >= m_nLength)) return(0.0f);
-
-	int x = (int)fx;
-	int z = (int)fz;
-	float fxPercent = fx - x;
-	float fzPercent = fz - z;
+	if ((x < 0) || (z < 0) || (x >= m_nWidth) || (z >= m_nLength)) return(0.0f);
 
 	float fBottomLeft = (float)m_pRawImagePixels[x + (z * m_nWidth)];
 	float fBottomRight = (float)m_pRawImagePixels[(x + 1) + (z * m_nWidth)];
 	float fTopLeft = (float)m_pRawImagePixels[x + ((z + 1) * m_nWidth)];
 	float fTopRight = (float)m_pRawImagePixels[(x + 1) + ((z + 1) * m_nWidth)];
-#ifdef _WITH_APPROXIMATE_OPPOSITE_CORNER
-	if (bReverseQuad)
-	{
-		if (fzPercent >= fxPercent)
-			fBottomRight = fBottomLeft + (fTopRight - fTopLeft);
-		else
-			fTopLeft = fTopRight + (fBottomLeft - fBottomRight);
-	}
-	else
-	{
-		if (fzPercent < (1.0f - fxPercent))
-			fTopRight = fTopLeft + (fBottomRight - fBottomLeft);
-		else
-			fBottomLeft = fTopLeft + (fBottomRight - fTopRight);
-	}
-#endif
-	float fTopHeight = fTopLeft * (1 - fxPercent) + fTopRight * fxPercent;
-	float fBottomHeight = fBottomLeft * (1 - fxPercent) + fBottomRight * fxPercent;
-	float fHeight = fBottomHeight * (1 - fzPercent) + fTopHeight * fzPercent;
+	float fTopHeight = fTopLeft * (1 - xFractional) + fTopRight * xFractional;
+	float fBottomHeight = fBottomLeft * (1 - xFractional) + fBottomRight * xFractional;
+	float fHeight = fBottomHeight * (1 - zFractional) + fTopHeight * zFractional;
 
 	return(fHeight);
 }
 
+float CHeightMapImage::GetHeight(float fx, float fz, XMFLOAT3 xmf3Scale)
+{
+	fx /= xmf3Scale.x;
+	fz /= xmf3Scale.z;
+
+	int x = (int)fx;
+	int z = (int)fz;
+	float xFractional = fx - x;
+	float zFractional = fz - z;
+
+	bool bReverseQuad = ((z % 2) != 0);
+	float fHeight = GetInterpolatedHeight(x, z, xFractional, zFractional, bReverseQuad);
+
+	return(fHeight * xmf3Scale.y);
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 
@@ -358,20 +347,25 @@ CGridMesh::~CGridMesh()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // CHeightMapGridMesh
-CHeightMapGridMesh::CHeightMapGridMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, int xStart, int zStart, int nWidth, int nLength, XMFLOAT3 xmf3Scale, XMFLOAT4 xmf4Color, void* pContext) : CMesh(pd3dDevice, pd3dCommandList)
+CHeightMapGridMesh::CHeightMapGridMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, int xStart, int zStart, int nWidth, int nLength, XMFLOAT3 xmf3Scale, XMFLOAT4 xmf4Color, void* pContext, XMINT2 xmi2ImageScale) : CMesh(pd3dDevice, pd3dCommandList)
 {
-	m_nVertices = nWidth * nLength;
-	//	m_nStride = sizeof(CTexturedVertex);
 	m_nStride = sizeof(CDiffused2TexturedVertex);
 	m_nOffset = 0;
 	m_nSlot = 0;
-	m_d3dPrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
 
 	m_nWidth = nWidth;
 	m_nLength = nLength;
+
 	m_xmf3Scale = xmf3Scale;
 
-	//	CTexturedVertex *pVertices = new CTexturedVertex[m_nVertices];
+#ifdef _WITH_TERRAIN_TESSELATION
+	m_d3dPrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_25_CONTROL_POINT_PATCHLIST;
+	m_nVertices = 25;
+#else
+	m_d3dPrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+	m_nVertices = nWidth * nLength;
+#endif
+
 	CDiffused2TexturedVertex* pVertices = new CDiffused2TexturedVertex[m_nVertices];
 
 	CHeightMapImage* pHeightMapImage = (CHeightMapImage*)pContext;
@@ -379,13 +373,16 @@ CHeightMapGridMesh::CHeightMapGridMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsC
 	int czHeightMap = pHeightMapImage->GetRawImageLength();
 
 	float fHeight = 0.0f, fMinHeight = +FLT_MAX, fMaxHeight = -FLT_MAX;
-	for (int i = 0, z = zStart; z < (zStart + nLength); z++)
+#ifdef _WITH_TERRAIN_TESSELATION
+	int nIncrease = 3; //(Block Size == 9) ? 2, (Block Size == 13) ? 3
+	for (int i = 0, z = (zStart + nLength - 1); z >= zStart; z -= nIncrease)
 	{
-		for (int x = xStart; x < (xStart + nWidth); x++, i++)
+		for (int x = xStart; x < (xStart + nWidth); x += nIncrease, i++)
 		{
-			fHeight = OnGetHeight(x, z, pContext);
-			pVertices[i].m_xmf3Position = XMFLOAT3((x * m_xmf3Scale.x), fHeight, (z * m_xmf3Scale.z));
-			pVertices[i].m_xmf4Diffuse = Vector4::Add(OnGetColor(x, z, pContext), xmf4Color);
+			float xPosition = x * m_xmf3Scale.x, zPosition = z * m_xmf3Scale.z;
+			fHeight = pHeightMapImage->GetHeight(xPosition, zPosition, m_xmf3Scale);
+			pVertices[i].m_xmf3Position = XMFLOAT3(xPosition, fHeight, zPosition);
+			pVertices[i].m_xmf4Diffuse = Vector4::Add(OnGetColor(int(x), int(z), pContext), xmf4Color);
 			pVertices[i].m_xmf2TexCoord0 = XMFLOAT2(float(x) / float(cxHeightMap - 1), float(czHeightMap - 1 - z) / float(czHeightMap - 1));
 			pVertices[i].m_xmf2TexCoord1 = XMFLOAT2(float(x) / float(m_xmf3Scale.x * 0.5f), float(z) / float(m_xmf3Scale.z * 0.5f));
 			if (fHeight < fMinHeight) fMinHeight = fHeight;
@@ -393,6 +390,20 @@ CHeightMapGridMesh::CHeightMapGridMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsC
 		}
 	}
 
+#else
+	for (int i = 0, z = zStart; z < (zStart + nLength); z++)
+	{
+		for (int x = xStart; x < (xStart + nWidth); x++, i++)
+		{
+			float xPosition = x * m_xmf3Scale.x, zPosition = z * m_xmf3Scale.z;
+			fHeight = pHeightMapImage->GetHeight(xPosition, zPosition, m_xmf3Scale);
+			pVertices[i].m_xmf3Position = XMFLOAT3(xPosition, fHeight, zPosition);
+			pVertices[i].m_xmf2TexCoord0 = XMFLOAT2(float(x) / float(cxHeightMap - 1), float(czHeightMap - 1 - z) / float(czHeightMap - 1));
+			pVertices[i].m_xmf2TexCoord1 = XMFLOAT2(float(x) / float(m_xmf3Scale.x * 0.5f), float(z) / float(m_xmf3Scale.z * 0.5f));
+			pVertices[i].m_xmf4Diffuse = Vector4::Add(OnGetColor(int(x), int(z), pContext), xmf4Color);
+		}
+	}
+#endif
 	m_pd3dPositionBuffer = CreateBufferResource(pd3dDevice, pd3dCommandList, pVertices, m_nStride * m_nVertices, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, &m_pd3dPositionUploadBuffer);
 
 	m_d3dPositionBufferView.BufferLocation = m_pd3dPositionBuffer->GetGPUVirtualAddress();
@@ -401,6 +412,7 @@ CHeightMapGridMesh::CHeightMapGridMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsC
 
 	delete[] pVertices;
 
+#ifndef _WITH_TERRAIN_TESSELATION
 	m_nIndices = ((nWidth * 2) * (nLength - 1)) + ((nLength - 1) - 1);
 	UINT* pnIndices = new UINT[m_nIndices];
 
@@ -433,10 +445,7 @@ CHeightMapGridMesh::CHeightMapGridMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsC
 	m_d3dIndexBufferView.SizeInBytes = sizeof(UINT) * m_nIndices;
 
 	delete[] pnIndices;
-}
-
-CHeightMapGridMesh::~CHeightMapGridMesh()
-{
+#endif
 }
 
 float CHeightMapGridMesh::OnGetHeight(int x, int z, void* pContext)
@@ -454,17 +463,21 @@ XMFLOAT4 CHeightMapGridMesh::OnGetColor(int x, int z, void* pContext)
 	XMFLOAT3 xmf3LightDirection = XMFLOAT3(-1.0f, 1.0f, 1.0f);
 	xmf3LightDirection = Vector3::Normalize(xmf3LightDirection);
 	CHeightMapImage* pHeightMapImage = (CHeightMapImage*)pContext;
-	XMFLOAT3 xmf3Scale = pHeightMapImage->GetScale();
 	XMFLOAT4 xmf4IncidentLightColor(0.9f, 0.8f, 0.4f, 1.0f);
-	float fScale = Vector3::DotProduct(pHeightMapImage->GetHeightMapNormal(x, z), xmf3LightDirection);
-	fScale += Vector3::DotProduct(pHeightMapImage->GetHeightMapNormal(x + 1, z), xmf3LightDirection);
-	fScale += Vector3::DotProduct(pHeightMapImage->GetHeightMapNormal(x + 1, z + 1), xmf3LightDirection);
-	fScale += Vector3::DotProduct(pHeightMapImage->GetHeightMapNormal(x, z + 1), xmf3LightDirection);
+	float fScale = Vector3::DotProduct(pHeightMapImage->GetHeightMapNormal(x, z, m_xmf3Scale), xmf3LightDirection);
+	fScale += Vector3::DotProduct(pHeightMapImage->GetHeightMapNormal(x + 1, z, m_xmf3Scale), xmf3LightDirection);
+	fScale += Vector3::DotProduct(pHeightMapImage->GetHeightMapNormal(x + 1, z + 1, m_xmf3Scale), xmf3LightDirection);
+	fScale += Vector3::DotProduct(pHeightMapImage->GetHeightMapNormal(x, z + 1, m_xmf3Scale), xmf3LightDirection);
 	fScale = (fScale / 4.0f) + 0.05f;
 	if (fScale > 1.0f) fScale = 1.0f;
 	if (fScale < 0.25f) fScale = 0.25f;
 	XMFLOAT4 xmf4Color = Vector4::Multiply(fScale, xmf4IncidentLightColor);
+
 	return(xmf4Color);
+}
+
+CHeightMapGridMesh::~CHeightMapGridMesh()
+{
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////

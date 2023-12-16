@@ -357,9 +357,22 @@ void CGameFramework::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPA
 			((CTankPlayer*)m_pPlayer)->m_fwheelRotationY = 0;
 #endif
 			break;
-		case 'z':
-		case 'Z':
+		case 'B':
+		case 'b':
 			m_bRenderBoundingBox = !m_bRenderBoundingBox;
+			break;
+		case 'I':
+		case 'i':
+			m_pcbMappedFrameworkInfo->m_nRenderMode = 0x00;
+			break;
+		case 'O':
+		case 'o':
+			m_pcbMappedFrameworkInfo->m_nRenderMode |= DYNAMIC_TESSELLATION;
+			break;
+		case 'L':
+		case 'l':
+			::gbTerrainTessellationWireframe = !::gbTerrainTessellationWireframe;
+			break;
 
 		default:
 			break;
@@ -560,39 +573,27 @@ void CGameFramework::AnimateObjects()
 
 void CGameFramework::CreateShaderVariables()
 {
-	UINT ncbElementBytes = ((sizeof(VS_CB_TIME_INFO) + 255) & ~255); //256의 배수
-	m_pd3dcbTime = ::CreateBufferResource(m_pd3dDevice, m_pd3dCommandList, NULL, ncbElementBytes, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, NULL);
+	UINT ncbElementBytes = ((sizeof(CB_FRAMEWORK_INFO) + 255) & ~255); //256의 배수
+	m_pd3dcbFrameworkInfo = ::CreateBufferResource(m_pd3dDevice, m_pd3dCommandList, NULL, ncbElementBytes, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, NULL);
 
-	m_pd3dcbTime->Map(0, NULL, (void**)&m_pcbMappedTime);
+	m_pd3dcbFrameworkInfo->Map(0, NULL, (void**)&m_pcbMappedFrameworkInfo);
 }
 
 void CGameFramework::UpdateShaderVariables()
 {
-	float fCurrentTime = m_GameTimer.GetTotalTime();
-	float fElapsedTime = m_GameTimer.GetTimeElapsed();
+	m_pcbMappedFrameworkInfo->m_fCurrentTime = m_GameTimer.GetTotalTime();
+	m_pcbMappedFrameworkInfo->m_fElapsedTime = m_GameTimer.GetTimeElapsed();
 
-	::memcpy(&m_pcbMappedTime->m_fCurrentTime, &fCurrentTime, sizeof(float));
-	::memcpy(&m_pcbMappedTime->m_fElapsedTime, &fElapsedTime, sizeof(float));
-
-	POINT ptCursorPos;
-	::GetCursorPos(&ptCursorPos);
-	::ScreenToClient(m_hWnd, &ptCursorPos);
-	float fxCursorPos = (ptCursorPos.x < 0) ? 0.0f : float(ptCursorPos.x);
-	float fyCursorPos = (ptCursorPos.y < 0) ? 0.0f : float(ptCursorPos.y);
-
-	::memcpy(&m_pcbMappedTime->m_fxCursorPos, &fxCursorPos, sizeof(float));
-	::memcpy(&m_pcbMappedTime->m_fxCursorPos, &fyCursorPos, sizeof(float));
-
-	D3D12_GPU_VIRTUAL_ADDRESS d3dGpuVirtualAddress = m_pd3dcbTime->GetGPUVirtualAddress();
+	D3D12_GPU_VIRTUAL_ADDRESS d3dGpuVirtualAddress = m_pd3dcbFrameworkInfo->GetGPUVirtualAddress();
 	m_pd3dCommandList->SetGraphicsRootConstantBufferView(PARAMETER_TIME, d3dGpuVirtualAddress);
 }
 
 void CGameFramework::ReleaseShaderVariables()
 {
-	if (m_pd3dcbTime)
+	if (m_pd3dcbFrameworkInfo)
 	{
-		m_pd3dcbTime->Unmap(0, NULL);
-		m_pd3dcbTime->Release();
+		m_pd3dcbFrameworkInfo->Unmap(0, NULL);
+		m_pd3dcbFrameworkInfo->Release();
 	}
 }
 

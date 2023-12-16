@@ -6,6 +6,8 @@
 
 #include "DDSTextureLoader12.h"
 
+bool gbTerrainTessellationWireframe = false;
+
 UINT gnCbvSrvDescriptorIncrementSize = 0;
 
 // TODO: 필요한 추가 헤더는

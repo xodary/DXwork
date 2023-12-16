@@ -156,7 +156,7 @@ public:
 class CRawFormatImage
 {
 protected:
-	BYTE* m_pRawImagePixels = NULL;
+	BYTE*						m_pRawImagePixels = NULL;
 
 	int							m_nWidth;
 	int							m_nLength;
@@ -182,12 +182,13 @@ protected:
 	XMFLOAT3					m_xmf3Scale;
 
 public:
-	CHeightMapImage(LPCTSTR pFileName, int nWidth, int nLength, XMFLOAT3 xmf3Scale);
+	CHeightMapImage(LPCTSTR pFileName, int nWidth, int nLength);
 	~CHeightMapImage(void);
 
 	XMFLOAT3 GetScale() { return(m_xmf3Scale); }
-	float GetHeight(float x, float z, bool bReverseQuad = false);
-	XMFLOAT3 GetHeightMapNormal(int x, int z);
+	float CHeightMapImage::GetHeight(float fx, float fz, XMFLOAT3 xmf3Scale);
+	XMFLOAT3 GetHeightMapNormal(int x, int z, XMFLOAT3 xmf3Scale);
+	float GetInterpolatedHeight(int x, int z, float xFractional, float zFractional, bool bReverseQuad);
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -223,13 +224,10 @@ protected:
 	XMFLOAT3					m_xmf3Scale = XMFLOAT3(1.0f, 1.0f, 1.0f);
 
 public:
-	CHeightMapGridMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, int xStart, int zStart, int nWidth, int nLength, XMFLOAT3 xmf3Scale = XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT4 xmf4Color = XMFLOAT4(1.0f, 1.0f, 0.0f, 0.0f), void* pContext = NULL);
+	CHeightMapGridMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, int xStart, int zStart, int nWidth, int nLength, XMFLOAT3 xmf3Scale = XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT4 xmf4Color = XMFLOAT4(1.0f, 1.0f, 0.0f, 0.0f), void* pContext = NULL, XMINT2 xmi2ImageScale = XMINT2(1, 1));
 	virtual ~CHeightMapGridMesh();
 
 	XMFLOAT3 GetScale() { return(m_xmf3Scale); }
-	int GetWidth() { return(m_nWidth); }
-	int GetLength() { return(m_nLength); }
-
 
 	virtual float OnGetHeight(int x, int z, void* pContext);
 	virtual XMFLOAT4 OnGetColor(int x, int z, void* pContext);

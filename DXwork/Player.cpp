@@ -307,18 +307,19 @@ CCamera* CTerrainPlayer::ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed)
 	case THIRD_PERSON_CAMERA:
 		SetFriction(250.0f);
 		SetGravity(XMFLOAT3(0.0f, -250.0f, 0.0f));
+		//SetGravity(XMFLOAT3(0.0f, 0.0f, 0.0f));
 		SetMaxVelocityXZ(300.0f);
 		SetMaxVelocityY(400.0f);
 		m_pCamera = OnChangeCamera(THIRD_PERSON_CAMERA, nCurrentCameraMode);
 		m_pCamera->SetTimeLag(0.25f);
 		m_pCamera->SetOffset(XMFLOAT3(0.0f, 20.0f, -50.0f));
 		m_pCamera->SetLookAt(Vector3::Add(m_xmf3Position, m_pCamera->GetOffset()), m_xmf3Position, m_xmf3Up);
-		m_pCamera->SetPosition(Vector3::Add(m_xmf3Position, m_pCamera->GetOffset()));
 		m_pCamera->GenerateProjectionMatrix(1.01f, 50000.0f, ASPECT_RATIO, 60.0f);
 		break;
 	default:
 		break;
 	}
+	m_pCamera->SetPosition(Vector3::Add(m_xmf3Position, m_pCamera->GetOffset()));
 	Update(fTimeElapsed);
 
 	return(m_pCamera);
@@ -330,8 +331,8 @@ void CTerrainPlayer::OnPlayerUpdateCallback(float fTimeElapsed)
 	XMFLOAT3 xmf3Scale = pTerrain->GetScale();
 	XMFLOAT3 xmf3PlayerPosition = GetPosition();
 	int z = (int)(xmf3PlayerPosition.z / xmf3Scale.z);
-	bool bReverseQuad = ((z % 2) != 0);
-	float fHeight = pTerrain->GetHeight(xmf3PlayerPosition.x, xmf3PlayerPosition.z, bReverseQuad) + 6.0f;
+	//bool bReverseQuad = ((z % 2) != 0);
+	float fHeight = pTerrain->GetHeight(xmf3PlayerPosition.x, xmf3PlayerPosition.z) + 6.0f;
 	if (xmf3PlayerPosition.y < fHeight)
 	{
 		XMFLOAT3 terrainNormal;
@@ -362,8 +363,8 @@ void CTerrainPlayer::OnCameraUpdateCallback(float fTimeElapsed)
 	XMFLOAT3 xmf3Scale = pTerrain->GetScale();
 	XMFLOAT3 xmf3CameraPosition = m_pCamera->GetPosition();
 	int z = (int)(xmf3CameraPosition.z / xmf3Scale.z);
-	bool bReverseQuad = ((z % 2) != 0);
-	float fHeight = pTerrain->GetHeight(xmf3CameraPosition.x, xmf3CameraPosition.z, bReverseQuad) + 5.0f;
+	// bool bReverseQuad = ((z % 2) != 0);
+	float fHeight = pTerrain->GetHeight(xmf3CameraPosition.x, xmf3CameraPosition.z) + 5.0f;
 	if (xmf3CameraPosition.y <= fHeight)
 	{
 		xmf3CameraPosition.y = fHeight;
@@ -378,20 +379,23 @@ CTankPlayer::CTankPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd
 
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 
-	m_pShader = new CStandardShader();
-	m_pShader->m_ppObjects[0] = this;
-	m_pShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
-	m_pShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 10, 6);
+	// m_pShader = new CStandardShader();를 먼저 해버리면
+	// m_pShader가 CShader* 타입이어서 뭘 호출하던 CShader::함수() 로 불린다.
+	CStandardShader* pShader = new CStandardShader();
+	pShader->CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
+	pShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 10, 6);
 
-	CGameObject* pGameObject = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/TankFree_Blue.bin", m_pShader);
+	CGameObject* pGameObject = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/TankFree_Blue.bin", pShader);
 	SetChild(pGameObject);
 	pGameObject->SetScale(8, 8, 8);
-	m_pShader->CreateShaderVariablesAndCreateCBV(pd3dDevice, pd3dCommandList, this);
+	pShader->CreateShaderVariablesAndCreateCBV(pd3dDevice, pd3dCommandList, this);
+	m_pShader = pShader;
 
 	PrepareAnimate();
 
 	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
-	SetPosition(XMFLOAT3(pTerrain->GetWidth() * 0.5f + 10, 500.0f, pTerrain->GetLength() * 0.5f + 10), true);
+	//SetPosition(XMFLOAT3(1030.0f, 1000.0f, 1400.0f));
+	SetPosition(XMFLOAT3(pTerrain->GetWidth() * 0.5f, 300.0f, pTerrain->GetLength() * 0.5f), false);
 	SetPlayerUpdatedContext(pTerrain);
 	SetCameraUpdatedContext(pTerrain);
 }
