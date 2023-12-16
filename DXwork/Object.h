@@ -5,7 +5,6 @@
 
 #include "Mesh.h"
 #include "Camera.h"
-#include "Shader.h"
 
 #define DIR_FORWARD					0x01
 #define DIR_BACKWARD				0x02
@@ -21,6 +20,7 @@
 #define RESOURCE_BUFFER				0x05
 
 class CShader;
+class CScene;
 
 struct MATERIAL
 {
@@ -87,6 +87,7 @@ public:
 	int GetTextures() { return(m_nTextures); }
 	ID3D12Resource* GetResource(int nIndex) { return(m_ppd3dTextures[nIndex]); }
 	int LoadTextureFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, CGameObject* pParent, FILE* pInFile, CShader* pShader, UINT nIndex);
+	ID3D12Resource* CreateTexture(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, UINT nWidth, UINT nHeight, UINT nElements, UINT nMipLevels, DXGI_FORMAT dxgiFormat, D3D12_RESOURCE_FLAGS d3dResourceFlags, D3D12_RESOURCE_STATES d3dResourceStates, D3D12_CLEAR_VALUE* pd3dClearValue, UINT nResourceType, UINT nIndex);
 	_TCHAR* GetTextureName(int nIndex) { return(m_ppstrTextureNames[nIndex]); }
 
 	UINT GetTextureType() { return(m_nTextureType); }
@@ -126,6 +127,7 @@ public:
 public:
 	CShader							*m_pShader = NULL;
 	CTexture						*m_pTexture = NULL;
+	MATERIAL						*m_pReflection = NULL;
 
 	XMFLOAT4						m_xmf4AlbedoColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	XMFLOAT4						m_xmf4EmissiveColor = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
@@ -165,6 +167,7 @@ public:
 
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera=NULL);
 	virtual void OnPrepareRender() { }
+	virtual void OnPreRender(ID3D12GraphicsCommandList* pd3dCommandList, CScene* pScene) { }
 
 	XMFLOAT3 GetPosition();
 	XMFLOAT3 GetLook();
@@ -380,3 +383,22 @@ public:
 	float m_fRotationAngle = 0.0f;
 	float m_fRotationDelta = 1.0f;
 };
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+class CDynamicCubeMappingObject : public CGameObject
+{
+public:
+	CDynamicCubeMappingObject(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, LONG nCubeMapSize, D3D12_CPU_DESCRIPTOR_HANDLE d3dDsvCPUDescriptorHandle, D3D12_CPU_DESCRIPTOR_HANDLE d3dRtvCPUDescriptorHandle, CShader* pShader);
+	virtual ~CDynamicCubeMappingObject();
+
+	virtual void OnPreRender(ID3D12GraphicsCommandList* pd3dCommandList, CScene* pScene);
+
+	CCamera*						m_ppCameras[6];
+
+	D3D12_CPU_DESCRIPTOR_HANDLE		m_pd3dRtvCPUDescriptorHandles[6];
+
+	ID3D12Resource*					m_pd3dDepthStencilBuffer = NULL;
+	D3D12_CPU_DESCRIPTOR_HANDLE		m_d3dDsvCPUDescriptorHandle;
+};
+

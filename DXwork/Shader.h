@@ -63,10 +63,13 @@ public:
 	virtual void CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature* pd3dGraphicsRootSignature, D3D12_PRIMITIVE_TOPOLOGY_TYPE d3dPrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 
 	virtual void OnPrepareRender(ID3D12GraphicsCommandList* pd3dCommandList);
+	virtual void OnPreRender(ID3D12Device* pd3dDevice, ID3D12CommandQueue* pd3dCommandQueue, ID3D12Fence* pd3dFence, HANDLE hFenceEvent, CScene* pScene) { }
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
 
 	virtual void ReleaseShaderVariables() { }
 	virtual void ReleaseUploadBuffers() { }
+	virtual void ReleaseObjects() { }
+	
 	virtual void AnimateObjects(float fTimeElapsed) { }
 	void CreateCbvSrvDescriptorHeaps(ID3D12Device* pd3dDevice, int nConstantBufferViews, int nShaderResourceViews);
 	D3D12_GPU_DESCRIPTOR_HANDLE CreateConstantBufferView(ID3D12Device* pd3dDevice, ID3D12Resource* pd3dConstantBuffer, UINT nStride);
@@ -301,4 +304,34 @@ public:
 	virtual D3D12_SHADER_BYTECODE CreateHullShader(ID3DBlob** ppd3dShaderBlob);
 
 	virtual void OnPrepareRender(ID3D12GraphicsCommandList* pd3dCommandList);
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+class CDynamicCubeMappingShader : public CTexturedShader
+{
+public:
+	CDynamicCubeMappingShader(UINT nCubeMapSize = 256);
+	virtual ~CDynamicCubeMappingShader();
+
+	virtual D3D12_INPUT_LAYOUT_DESC CreateInputLayout();
+	virtual D3D12_SHADER_BYTECODE CreateVertexShader(ID3DBlob** ppd3dShaderBlob);
+	virtual D3D12_SHADER_BYTECODE CreatePixelShader(ID3DBlob** ppd3dShaderBlob);
+
+	virtual void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, void* pContext = NULL);
+	virtual void ReleaseObjects();
+
+	virtual void ReleaseUploadBuffers();
+
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
+	virtual void OnPreRender(ID3D12Device* pd3dDevice, ID3D12CommandQueue* pd3dCommandQueue, ID3D12Fence* pd3dFence, HANDLE hFenceEvent, CScene* pScene);
+
+protected:
+	ULONG							m_nCubeMapSize = 256;
+
+	ID3D12CommandAllocator*			m_pd3dCommandAllocator = NULL;
+	ID3D12GraphicsCommandList*		m_pd3dCommandList = NULL;
+
+	ID3D12DescriptorHeap*			m_pd3dRtvDescriptorHeap = NULL;
+	ID3D12DescriptorHeap*			m_pd3dDsvDescriptorHeap = NULL;
 };

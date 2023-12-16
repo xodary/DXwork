@@ -15,6 +15,8 @@ public:
 	virtual void CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
 	virtual void UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList);
 	virtual void ReleaseShaderVariables();
+	virtual void ReleaseObjects();
+	virtual void ReleaseUploadBuffers();
 
 	bool CheckSceneCollisions(CGameObject* pTargetGameObject);
 	bool CheckObjectByObjectCollisions(CGameObject* pObjectA, CGameObject* pObjectB);
@@ -23,7 +25,8 @@ public:
 	void AddObjectShader(CShader* pShader);
 	void AddCollisionObject(CShader* pShader, CGameObject**& ppObject, int& nObject);
 	ID3D12RootSignature* CreateGraphicsRootSignature(ID3D12Device* pd3dDevice);
-	void PrepareRender(ID3D12GraphicsCommandList* pd3dCommandList);
+	void OnPreRender(ID3D12Device* pd3dDevice, ID3D12CommandQueue* pd3dCommandQueue, ID3D12Fence* pd3dFence, HANDLE hFenceEvent);
+	void OnPrepareRender(ID3D12GraphicsCommandList* pd3dCommandList);
 	ID3D12RootSignature* GetGraphicsRootSignature() { return(m_pd3dGraphicsRootSignature); }
 
 	void AnimateObjects(float fTimeElapsed);
@@ -36,8 +39,11 @@ public:
 
 	CPlayer						*m_pPlayer = NULL;
 	CSkyBox						*m_pSkyBox = NULL;
-
 	CHeightMapTerrain			*m_pTerrain = NULL;
+
+	CDynamicCubeMappingShader	**m_ppEnvironmentMappingShaders = NULL;
+	int							m_nEnvironmentMappingShaders = 0;
+
 
 	CRippleWater				*m_pTerrainWater = NULL;
 	XMFLOAT4X4					m_xmf4x4WaterAnimation;
