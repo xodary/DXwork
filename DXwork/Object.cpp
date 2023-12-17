@@ -1138,7 +1138,7 @@ void CTankObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent, CPlayer
 	XMVECTOR vTerrainNormal = XMLoadFloat3(&terrainNormal);
 	XMFLOAT3 xmf3Up = GetUp();
 	XMVECTOR vTankNormal = XMLoadFloat3(&xmf3Up);
-	XMVECTOR lerpedVector = XMVectorLerp(vTerrainNormal, vTankNormal, 0.4f);
+	XMVECTOR lerpedVector = XMVectorLerp(vTerrainNormal, vTankNormal, fTimeElapsed * 40);
 
 	XMStoreFloat3(&xmf3Up, lerpedVector);
 	XMFLOAT3 xmf3Right = GetRight();

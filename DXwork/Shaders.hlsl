@@ -249,10 +249,10 @@ float4 PSTerrain(VS_TERRAIN_OUTPUT input) : SV_TARGET
     float4 cDetailTexColor = gtxtTerrainDetailTexture.Sample(gSamplerState, input.uv1);
     //float4 cColor = input.color * cBaseTexColor;
     float4 cColor = cBaseTexColor * 0.5f + cDetailTexColor * 0.5f;
-	// if ((150.0f < input.positionW.y) && (input.positionW.y < 155.5f))
-	// {
-	// 	cColor.rgb += gtxtTerrainWaterTexture.Sample(gSamplerState, float2(input.uv0.x * 50.0f, (input.positionW.y - 155.0f) / 3.0f + 0.65f)).rgb * (1.0f - (input.positionW.y - 155.0f) / 5.5f);
-	// }
+	if ((150.0f < input.positionW.y) && (input.positionW.y < 155.5f))
+	{
+		cColor.rgb += gtxtTerrainWaterTexture.Sample(gSamplerState, float2(input.uv0.x * 50.0f, (input.positionW.y - 155.0f) / 3.0f + 0.65f)).rgb * (1.0f - (input.positionW.y - 155.0f) / 5.5f);
+	}
 	return(cColor);
 }
 

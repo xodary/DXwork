@@ -339,7 +339,8 @@ void CTerrainPlayer::OnPlayerUpdateCallback(float fTimeElapsed)
 		terrainNormal = pTerrain->GetNormal(xmf3PlayerPosition.x, xmf3PlayerPosition.z);
 		XMVECTOR vTerrainNormal = XMLoadFloat3(&terrainNormal);
 		XMVECTOR vTankNormal = XMLoadFloat3(&m_xmf3Up);
-		XMVECTOR lerpedVector = XMVectorLerp(vTerrainNormal, vTankNormal, 0.4f);
+
+		XMVECTOR lerpedVector = XMVectorLerp(vTerrainNormal, vTankNormal, fTimeElapsed * 40);
 		
 		XMStoreFloat3(&m_xmf3Up, lerpedVector);
 		XMStoreFloat3(&m_xmf3Right, XMVector3Cross(XMLoadFloat3(&m_xmf3Up), XMLoadFloat3(&m_xmf3Look)));
@@ -395,7 +396,10 @@ CTankPlayer::CTankPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd
 
 	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
 	//SetPosition(XMFLOAT3(1030.0f, 1000.0f, 1400.0f));
-	SetPosition(XMFLOAT3(pTerrain->GetWidth() * 0.5f, 300.0f, pTerrain->GetLength() * 0.5f), false);
+	if (pTerrain)
+		SetPosition(XMFLOAT3(pTerrain->GetWidth() * 0.5f, 300.0f, pTerrain->GetLength() * 0.5f), false);
+	else
+		SetPosition(XMFLOAT3(0, 0, 0), false);
 	SetPlayerUpdatedContext(pTerrain);
 	SetCameraUpdatedContext(pTerrain);
 }

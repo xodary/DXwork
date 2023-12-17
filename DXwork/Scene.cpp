@@ -24,45 +24,45 @@ void CScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* p
 
 	m_pSkyBox = new CSkyBox(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
 
-	XMFLOAT3 xmf3Scale(16.0f, 3.0f, 16.0f);
+	XMFLOAT3 xmf3Scale = XMFLOAT3(8.0f, 2.0f, 8.0f);
 	XMFLOAT4 xmf4Color(0.0f, 0.5f, 0.0f, 0.0f);
 
 	m_pTerrain = new CHeightMapTerrain(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, _T("Image/HeightMap.raw"), 257, 257, 13, 13, xmf3Scale, xmf4Color);
 
-	//m_pTerrainWater = new CRippleWater(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, 257, 257, 17, 17, xmf3Scale, xmf4Color);
-	//m_pTerrainWater->SetPosition(+(257 * 0.5f), 200.0f, +(257 * 0.5f));
+	xmf3Scale = XMFLOAT3(8.0f, 2.0f, 8.0f);
+	m_pTerrainWater = new CRippleWater(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, 257, 257, 17, 17, xmf3Scale, xmf4Color);
+	m_pTerrainWater->SetPosition(+(257 * 0.5f), 155.0f, +(257 * 0.5f));
 
-	m_nShaders = 4;
-	m_ppShaders = new CShader * [m_nShaders];
+	 m_nShaders = 4;
+	 m_ppShaders = new CShader * [m_nShaders];
+	 
+	 CBulletShader* pBulletsShader = new CBulletShader();
+	 pBulletsShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
+	 pBulletsShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, this, m_pTerrain);
+	 m_ppShaders[0] = pBulletsShader;
 	
-	CBulletShader* pBulletsShader = new CBulletShader();
-	pBulletsShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
-	pBulletsShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, this, m_pTerrain);
-	m_ppShaders[0] = pBulletsShader;
-	// AddCollisionObject(pBulletsShader, m_ppCollisionObjects, m_nCollisionObject);
+	 CEnermyShader* pEnermyShader = new CEnermyShader();
+	 pEnermyShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
+	 pEnermyShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, this, m_pTerrain);
+	 m_ppShaders[1] = pEnermyShader;
+	 pEnermyShader->m_pBulletShader = pBulletsShader;
+	 AddCollisionObject(pEnermyShader, m_ppCollisionObjects, m_nCollisionObject);
+	 
+	 CTreeShader* pTreeShader = new CTreeShader();
+	 pTreeShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
+	 pTreeShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, this, m_pTerrain);
+	 m_ppShaders[2] = pTreeShader;
+	 AddCollisionObject(pTreeShader, m_ppCollisionObjects, m_nCollisionObject);
 	
-	CEnermyShader* pEnermyShader = new CEnermyShader();
-	pEnermyShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
-	pEnermyShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, this, m_pTerrain);
-	m_ppShaders[1] = pEnermyShader;
-	pEnermyShader->m_pBulletShader = pBulletsShader;
-	AddCollisionObject(pEnermyShader, m_ppCollisionObjects, m_nCollisionObject);
-	
-	CTreeShader* pTreeShader = new CTreeShader();
-	pTreeShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
-	pTreeShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, this, m_pTerrain);
-	m_ppShaders[2] = pTreeShader;
-	AddCollisionObject(pTreeShader, m_ppCollisionObjects, m_nCollisionObject);
-	
-	CBillboardObjectsShader* pBillboardObjectShader = new CBillboardObjectsShader();
-	pBillboardObjectShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
-	pBillboardObjectShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pTerrain);
-	m_ppShaders[3] = pBillboardObjectShader;
+	 CBillboardObjectsShader* pBillboardObjectShader = new CBillboardObjectsShader();
+	 pBillboardObjectShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
+	 pBillboardObjectShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pTerrain);
+	 m_ppShaders[3] = pBillboardObjectShader;
 
 	m_nEnvironmentMappingShaders = 1;
 	m_ppEnvironmentMappingShaders = new CDynamicCubeMappingShader * [m_nEnvironmentMappingShaders];
 	
-	m_ppEnvironmentMappingShaders[0] = new CDynamicCubeMappingShader(256);
+	m_ppEnvironmentMappingShaders[0] = new CDynamicCubeMappingShader(1);
 	m_ppEnvironmentMappingShaders[0]->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
 	m_ppEnvironmentMappingShaders[0]->BuildObjects(pd3dDevice, pd3dCommandList, m_pTerrain);
 
@@ -167,7 +167,7 @@ ID3D12RootSignature* CScene::CreateGraphicsRootSignature(ID3D12Device* pd3dDevic
 	pd3dRootParameters[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 	pd3dRootParameters[6].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	pd3dRootParameters[6].Descriptor.ShaderRegister = 4;		//Time, ElapsedTime, xCursor, yCursor
+	pd3dRootParameters[6].Descriptor.ShaderRegister = 4;		//Time, ElapsedTime
 	pd3dRootParameters[6].Descriptor.RegisterSpace = 0;			//Time
 	pd3dRootParameters[6].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
@@ -249,7 +249,8 @@ void CScene::OnPreRender(ID3D12Device* pd3dDevice, ID3D12CommandQueue* pd3dComma
 
 void CScene::AnimateObjects(float fTimeElapsed)
 {
-	((CEnermyShader*)m_ppShaders[1])->m_pPlayer = m_pPlayer;
+	if(m_nShaders>1)
+		((CEnermyShader*)m_ppShaders[1])->m_pPlayer = m_pPlayer;
 	for (int i = 0; i < m_nCollisionObject; i++)
 	{
 		m_ppCollisionObjects[i]->UpdateBoundingBox();

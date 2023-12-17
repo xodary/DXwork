@@ -17,12 +17,6 @@ CShader::~CShader()
 {
 	if (m_pd3dGraphicsRootSignature) m_pd3dGraphicsRootSignature->Release();
 	if (m_pd3dCbvSrvDescriptorHeap) m_pd3dCbvSrvDescriptorHeap->Release();
-
-	if (m_ppd3dPipelineStates)
-	{
-		for (int i = 0; i < m_nPipelineStates; i++) if (m_ppd3dPipelineStates[i]) m_ppd3dPipelineStates[i]->Release();
-		delete[] m_ppd3dPipelineStates;
-	}
 }
 
 D3D12_SHADER_BYTECODE CShader::CreateVertexShader(ID3DBlob** ppd3dShaderBlob)
@@ -378,12 +372,6 @@ CStandardShader::~CStandardShader()
 {
 	if (m_pd3dGraphicsRootSignature) m_pd3dGraphicsRootSignature->Release();
 	if (m_pd3dCbvSrvDescriptorHeap) m_pd3dCbvSrvDescriptorHeap->Release();
-
-	if (m_ppd3dPipelineStates)
-	{
-		for (int i = 0; i < m_nPipelineStates; i++) if (m_ppd3dPipelineStates[i]) m_ppd3dPipelineStates[i]->Release();
-		delete[] m_ppd3dPipelineStates;
-	}
 }
 
 D3D12_INPUT_LAYOUT_DESC CStandardShader::CreateInputLayout()
@@ -1622,7 +1610,10 @@ void CDynamicCubeMappingShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12Gra
 	CMesh* pMeshIlluminated = new CSphereMeshIlluminated(pd3dDevice, pd3dCommandList, 100.0f, 20, 20);
 
 	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
-	XMFLOAT2 xmf2TerrainCenter = XMFLOAT2(pTerrain->GetWidth() * 0.5f, pTerrain->GetLength() * 0.5f);
+	XMFLOAT2 xmf2TerrainCenter{};
+	if (pTerrain) {
+		xmf2TerrainCenter = XMFLOAT2(pTerrain->GetWidth() * 0.5f, pTerrain->GetLength() * 0.5f);
+	}
 
 	for (int i = 0; i < m_nObject; i++)
 	{
@@ -1630,11 +1621,13 @@ void CDynamicCubeMappingShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12Gra
 
 		m_ppObjects[i]->SetMesh(0, pMeshIlluminated);
 
-		//float xPosition = xmf2TerrainCenter.x + ((i + 1) * 150.0f) * ((i % 2) ? +1.0f : -1.0f);
-		//float zPosition = xmf2TerrainCenter.y + ((i + 1) * 150.0f) * ((i % 2) ? +1.0f : -1.0f);
-		float fHeight = pTerrain->GetHeight(xmf2TerrainCenter.x, xmf2TerrainCenter.y + 300);
-		m_ppObjects[i]->SetPosition(xmf2TerrainCenter.x, fHeight + 150.0f, xmf2TerrainCenter.y + 300);
-
+		if (pContext) {
+			float fHeight = pTerrain->GetHeight(xmf2TerrainCenter.x, xmf2TerrainCenter.y + 300);
+			m_ppObjects[i]->SetPosition(xmf2TerrainCenter.x, fHeight + 150.0f, xmf2TerrainCenter.y + 300);
+		}
+		else {
+			m_ppObjects[i]->SetPosition(0, 0, 0);
+		}
 		m_ppObjects[i]->SetCbvGPUDescriptorHandlePtr(d3dCbvGPUDescriptorStartHandle.ptr);
 
 		d3dCbvGPUDescriptorStartHandle.ptr += ::gnCbvSrvDescriptorIncrementSize;
