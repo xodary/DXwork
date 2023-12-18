@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include "GameFramework.h"
+#include "UILayer.h"
 
 CGameFramework::CGameFramework()
 {
@@ -464,6 +465,22 @@ void CGameFramework::OnDestroy()
 
 void CGameFramework::BuildObjects()
 {
+	m_pUILayer = new UILayer(m_nSwapChainBuffers, 2, m_pd3dDevice, m_pd3dCommandQueue, m_ppd3dSwapChainBackBuffers, m_nWndClientWidth, m_nWndClientHeight);
+
+	ID2D1SolidColorBrush* pd2dBrush = m_pUILayer->CreateBrush(D2D1::ColorF(D2D1::ColorF::Purple, 1.0f));
+	IDWriteTextFormat* pdwTextFormat = m_pUILayer->CreateTextFormat(L"±Ã¼­Ã¼", m_nWndClientHeight / 15.0f);
+	D2D1_RECT_F d2dRect = D2D1::RectF(0.0f, 0.0f, (float)m_nWndClientWidth, (float)m_nWndClientHeight);
+
+	WCHAR pstrOutputText[256];
+	wcscpy_s(pstrOutputText, 256, L"ÇÑ±Û Å×½ºÆ® ±Ã¼­Ã¼\n");
+	m_pUILayer->UpdateTextOutputs(0, pstrOutputText, &d2dRect, pdwTextFormat, pd2dBrush);
+
+	pd2dBrush = m_pUILayer->CreateBrush(D2D1::ColorF(D2D1::ColorF::BlueViolet, 1.0f));
+	pdwTextFormat = m_pUILayer->CreateTextFormat(L"Arial", m_nWndClientHeight / 25.0f);
+	d2dRect = D2D1::RectF(0.0f, m_nWndClientHeight - 75.0f, (float)m_nWndClientWidth, (float)m_nWndClientHeight);
+
+	m_pUILayer->UpdateTextOutputs(1, NULL, &d2dRect, pdwTextFormat, pd2dBrush);
+
 	m_pd3dCommandList->Reset(m_pd3dCommandAllocator, NULL);
 
 	m_pScene = new CScene();
@@ -633,7 +650,10 @@ void CGameFramework::MoveToNextFrame()
 	}
 }
 
-//#define _WITH_PLAYER_TOP
+void CGameFramework::UpdateUI()
+{
+	m_pUILayer->UpdateTextOutputs(1, m_pszFrameRate, NULL, NULL, NULL);
+}
 
 void CGameFramework::FrameAdvance()
 {
@@ -644,6 +664,8 @@ void CGameFramework::FrameAdvance()
 	ProcessInput();
 
 	AnimateObjects();
+
+	UpdateUI();
 
 	m_pScene->OnPreRender(m_pd3dDevice, m_pd3dCommandQueue, m_pd3dFence, m_hFenceEvent);
 	
@@ -676,6 +698,8 @@ void CGameFramework::FrameAdvance()
 	m_pd3dCommandQueue->ExecuteCommandLists(1, ppd3dCommandLists);
 
 	::WaitForGpuComplete(m_pd3dCommandQueue, m_pd3dFence, ++m_nFenceValues[m_nSwapChainBufferIndex], m_hFenceEvent);
+
+	m_pUILayer->Render(m_nSwapChainBufferIndex);
 
 #ifdef _WITH_SYNCH_SWAPCHAIN
 	m_pdxgiSwapChain->Present(1, 0);
