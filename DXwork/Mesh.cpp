@@ -770,16 +770,6 @@ void CBoundingBoxMesh::UpdateVertexPosition(BoundingOrientedBox* pxmBoundingBox)
 	m_pcbMappedPositions[i++] = xmf3Corners[3];
 	m_pcbMappedPositions[i++] = xmf3Corners[7];
 
-	// std::cout << pxmBoundingBox->Center.x << ' ';
-	// std::cout << pxmBoundingBox->Center.y << ' ';
-	// std::cout << pxmBoundingBox->Center.z << ' ';
-	// std::cout << std::endl;
-	// 
-	// std::cout << m_pcbMappedPositions[0].x << ' ';
-	// std::cout << m_pcbMappedPositions[0].y << ' ';
-	// std::cout << m_pcbMappedPositions[0].z << ' ';
-	// std::cout << std::endl << std::endl;
-
 }
 
 void CBoundingBoxMesh::Render(ID3D12GraphicsCommandList* pd3dCommandList)
@@ -1052,6 +1042,8 @@ CSphereMeshIlluminated::CSphereMeshIlluminated(ID3D12Device* pd3dDevice, ID3D12G
 	m_d3dIndexBufferView.SizeInBytes = sizeof(UINT) * m_nIndices;
 
 	if (pnIndices) delete[] pnIndices;
+
+	m_xmBoundingSphere = BoundingSphere(XMFLOAT3(0.0f, 0.0f, 0.0f), fRadius);
 }
 
 CSphereMeshIlluminated::~CSphereMeshIlluminated()

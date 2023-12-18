@@ -61,10 +61,11 @@ void CScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* p
 	m_nEnvironmentMappingShaders = 1;
 	m_ppEnvironmentMappingShaders = new CDynamicCubeMappingShader * [m_nEnvironmentMappingShaders];
 	
-	m_ppEnvironmentMappingShaders[0] = new CDynamicCubeMappingShader(256);
+	m_ppEnvironmentMappingShaders[0] = new CDynamicCubeMappingShader(1);
 	m_ppEnvironmentMappingShaders[0]->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
 	m_ppEnvironmentMappingShaders[0]->BuildObjects(pd3dDevice, pd3dCommandList, m_pTerrain);
 
+	AddCollisionObject(m_ppEnvironmentMappingShaders[0], m_ppEnvironmentMapObjects, m_nEnvironmentMapObjects);
 }
 
 void CScene::AddCollisionObject(CShader* pShader, CGameObject**& ppObject, int& nObject)
@@ -254,6 +255,10 @@ void CScene::AnimateObjects(float fTimeElapsed)
 	{
 		m_ppCollisionObjects[i]->UpdateBoundingBox();
 	}
+	for (int i = 0; i < m_nEnvironmentMapObjects; i++)
+	{
+		m_ppEnvironmentMapObjects[i]->UpdateBoundingBox();
+	}
 	for (int i = 0; i < m_nShaders; i++)
 	{
 		if (m_ppShaders[i])
@@ -313,6 +318,13 @@ void CScene::RenderBoundingBox(ID3D12GraphicsCommandList* pd3dCommandList, CCame
 		if (m_ppCollisionObjects[i])
 		{
 			m_ppCollisionObjects[i]->RenderBoundingBox(pd3dCommandList, pCamera);
+		}
+	}
+	for (int i = 0; i < m_nEnvironmentMapObjects; i++)
+	{
+		if (m_ppEnvironmentMapObjects[i])
+		{
+			m_ppEnvironmentMapObjects[i]->RenderBoundingBox(pd3dCommandList, pCamera);
 		}
 	}
 
@@ -406,21 +418,53 @@ bool CScene::CheckSceneCollisions(CGameObject* pTargetGameObject)
 	return(false);
 }
 
-bool CScene::CheckObjectByObjectCollisions(CGameObject* pObjectA, CGameObject* pObjectB)
+bool CScene::CheckEnvironmentMapCollision()
 {
-	for (int p = 0; p < pObjectA->m_nMeshes; ++p) {
-		for (int q = 0; q < pObjectB->m_nMeshes; ++q) {
-			if (pObjectA->m_pxmBoundingBoxes[p].Intersects(pObjectB->m_pxmBoundingBoxes[q]))
-			{
-				//std::cout << "面倒惯积 CScene::CheckObjectByObjectCollisions" << std::endl;
-				isCollided = true;
-				return isCollided;
+	CGameObject** ppObjects = m_ppEnvironmentMappingShaders[0]->m_ppObjects;
+	int nObjects = m_ppEnvironmentMappingShaders[0]->m_nObject;
+	for (int i = 0; i < nObjects; i++)
+	{
+		if (CheckObjectByObjectCollisions(ppObjects[i], m_pPlayer, true))
+		{
+			// std::cout << "面倒惯积 CScene::CheckEnvironmentMapCollision" << std::endl;
+			return true;
+		}
+	}
+	return false;
+}
+
+bool CScene::CheckObjectByObjectCollisions(CGameObject* pObjectA, CGameObject* pObjectB, bool isAsphere)
+{
+	if (isAsphere)
+	{
+		for (int p = 0; p < pObjectA->m_nMeshes; ++p) {
+			for (int q = 0; q < pObjectB->m_nMeshes; ++q) {
+				if (pObjectA->m_xmBoundingSpheres[p].Intersects(pObjectB->m_pxmBoundingBoxes[q]))
+				{
+					std::cout << "面倒惯积 CScene::CheckObjectByObjectCollisions" << std::endl;
+					isCollided = true;
+					return isCollided;
+				}
 			}
 		}
 	}
-	if (pObjectB->m_pSibling) CheckObjectByObjectCollisions(pObjectA, pObjectB->m_pSibling);
-	if (pObjectB->m_pChild) CheckObjectByObjectCollisions(pObjectA, pObjectB->m_pChild);
-	if (pObjectA->m_pSibling) CheckObjectByObjectCollisions(pObjectA->m_pSibling, pObjectB);
-	if (pObjectA->m_pChild) CheckObjectByObjectCollisions(pObjectA->m_pChild, pObjectB);
+	else
+	{
+		for (int p = 0; p < pObjectA->m_nMeshes; ++p) {
+			for (int q = 0; q < pObjectB->m_nMeshes; ++q) {
+				if (pObjectA->m_pxmBoundingBoxes[p].Intersects(pObjectB->m_pxmBoundingBoxes[q]))
+				{
+					//std::cout << "面倒惯积 CScene::CheckObjectByObjectCollisions" << std::endl;
+					isCollided = true;
+					return isCollided;
+				}
+			}
+		}
+	}
+	if (pObjectB->m_pSibling) CheckObjectByObjectCollisions(pObjectA, pObjectB->m_pSibling, isAsphere);
+	if (pObjectB->m_pChild) CheckObjectByObjectCollisions(pObjectA, pObjectB->m_pChild, isAsphere);
+	if (pObjectA->m_pSibling) CheckObjectByObjectCollisions(pObjectA->m_pSibling, pObjectB, isAsphere);
+	if (pObjectA->m_pChild) CheckObjectByObjectCollisions(pObjectA->m_pChild, pObjectB, isAsphere);
 	return(isCollided);
 }
+

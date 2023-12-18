@@ -146,7 +146,7 @@ protected:
 	int								m_nBaseVertex = 0;
 public:
 	BoundingOrientedBox				m_xmBoundingBox = BoundingOrientedBox(XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT3(0.1f, 0.1f, 0.1f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f));
-
+	BoundingSphere					m_xmBoundingSphere = BoundingSphere(XMFLOAT3(0.0f, 0.0f, 0.0f), 0.1f);
 public:
 	UINT GetType() { return(m_nType); }
 
@@ -154,6 +154,7 @@ public:
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
 
 	BoundingOrientedBox GetBoundingBox() { return(m_xmBoundingBox); }
+	BoundingSphere GetBoundingSphere() { return(m_xmBoundingSphere); }
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

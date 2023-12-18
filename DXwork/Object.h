@@ -194,7 +194,7 @@ public:
 	void Rotate(XMFLOAT3* pxmf3Axis, float fAngle);
 	void Rotate(XMFLOAT4* pxmf4Quaternion);
 
-	void UpdateBoundingBox();
+	virtual void UpdateBoundingBox();
 	void RenderBoundingBox(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
 
 	virtual void PrepareAnimate() { }
@@ -246,6 +246,7 @@ public:
 
 	BoundingOrientedBox				*m_pxmBoundingBoxes;
 	CBoundingBoxMesh				**m_ppBoundingBoxMeshes = NULL;
+	BoundingSphere					*m_xmBoundingSpheres;
 	
 	float							m_fMovingSpeed = 0.0f;
 	float							m_fMovingRange = 0.0f;
@@ -392,6 +393,7 @@ public:
 	CDynamicCubeMappingObject(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, LONG nCubeMapSize, D3D12_CPU_DESCRIPTOR_HANDLE d3dDsvCPUDescriptorHandle, D3D12_CPU_DESCRIPTOR_HANDLE d3dRtvCPUDescriptorHandle, CShader* pShader);
 	virtual ~CDynamicCubeMappingObject();
 
+	virtual void UpdateBoundingBox();
 	virtual void OnPreRender(ID3D12GraphicsCommandList* pd3dCommandList, CScene* pScene);
 
 	CCamera*						m_ppCameras[6];

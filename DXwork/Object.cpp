@@ -1253,6 +1253,15 @@ void CGrassObject::Animate(float fTimeElapsed)
 // 
 CDynamicCubeMappingObject::CDynamicCubeMappingObject(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, LONG nCubeMapSize, D3D12_CPU_DESCRIPTOR_HANDLE d3dDsvCPUDescriptorHandle, D3D12_CPU_DESCRIPTOR_HANDLE d3dRtvCPUDescriptorHandle, CShader* pShader)
 {
+	m_nMeshes = 1;
+	m_ppBoundingBoxMeshes = new CBoundingBoxMesh * [m_nMeshes];
+	m_xmBoundingSpheres = new BoundingSphere[m_nMeshes];
+	for (int i = 0; i < m_nMeshes; i++) {
+		m_ppMeshes[i] = NULL;
+		m_ppBoundingBoxMeshes[i] = NULL;
+		m_xmBoundingSpheres[i] = BoundingSphere(XMFLOAT3(0.0f, 0.0f, 0.0f), 0.1f);
+	}
+
 	//Camera[6]
 	for (int j = 0; j < 6; j++)
 	{
@@ -1342,4 +1351,13 @@ void CDynamicCubeMappingObject::OnPreRender(ID3D12GraphicsCommandList* pd3dComma
 		pScene->Render(pd3dCommandList, m_ppCameras[j]);
 	}
 	::SynchronizeResourceTransition(pd3dCommandList, m_ppMaterials[0]->m_pTexture->GetResource(0), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ);
+}
+
+void CDynamicCubeMappingObject::UpdateBoundingBox()
+{
+	for (int i = 0; i < m_nMeshes; ++i) {
+		m_ppMeshes[i]->m_xmBoundingSphere.Transform(m_xmBoundingSpheres[i], XMLoadFloat4x4(&m_xmf4x4World));
+	}
+	if (m_pSibling) m_pSibling->UpdateBoundingBox();
+	if (m_pChild) m_pChild->UpdateBoundingBox();
 }

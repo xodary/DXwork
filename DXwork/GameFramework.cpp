@@ -594,6 +594,11 @@ void CGameFramework::AnimateObjects()
 		//printf("이전 위치로 돌아감: (%f, %f, %f)\n", prePos.x, prePos.y, prePos.z);
 		m_pPlayer->SetPosition(prePos, false);
 	}
+
+	if (m_pScene->CheckEnvironmentMapCollision())
+	{
+		std::cout << "새로운 곳으로 이동합니다." << std::endl;
+	}
 }
 
 void CGameFramework::CreateShaderVariables()

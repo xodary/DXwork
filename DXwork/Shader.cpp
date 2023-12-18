@@ -1678,3 +1678,66 @@ void CDynamicCubeMappingShader::Render(ID3D12GraphicsCommandList* pd3dCommandLis
 	}
 }
 
+CDynamicMappingShader::CDynamicMappingShader(UINT nCubeMapSize)
+{
+}
+
+CDynamicMappingShader::~CDynamicMappingShader()
+{
+}
+
+void CDynamicMappingShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, void* pContext)
+{
+	pd3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, __uuidof(ID3D12CommandAllocator), (void**)&m_pd3dCommandAllocator);
+	pd3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_pd3dCommandAllocator, NULL, __uuidof(ID3D12GraphicsCommandList), (void**)&m_pd3dCommandList);
+	m_pd3dCommandList->Close();
+
+	m_nObject = 4;
+	m_ppObjects = new CGameObject * [m_nObject];
+
+	CreateShaderVariables(pd3dDevice, pd3dCommandList);
+	CreateCbvSrvDescriptorHeaps(pd3dDevice, m_nObject, m_nObject);
+	CreateConstantBufferViews(pd3dDevice, m_nObject, m_pd3dcbGameObjects, ((sizeof(CB_GAMEOBJECT_INFO) + 255) & ~255));
+
+	D3D12_GPU_DESCRIPTOR_HANDLE d3dCbvGPUDescriptorStartHandle = m_d3dCbvGPUDescriptorStartHandle;
+	D3D12_DESCRIPTOR_HEAP_DESC d3dDescriptorHeapDesc;
+	d3dDescriptorHeapDesc.NumDescriptors = m_nObject;
+	d3dDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+	d3dDescriptorHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	d3dDescriptorHeapDesc.NodeMask = 0;
+	HRESULT hResult = pd3dDevice->CreateDescriptorHeap(&d3dDescriptorHeapDesc, __uuidof(ID3D12DescriptorHeap), (void**)&m_pd3dDsvDescriptorHeap);
+
+	D3D12_CPU_DESCRIPTOR_HANDLE d3dDsvCPUDescriptorHandle = m_pd3dDsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	d3dDescriptorHeapDesc.NumDescriptors = m_nObject * 6;
+	d3dDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+	pd3dDevice->CreateDescriptorHeap(&d3dDescriptorHeapDesc, __uuidof(ID3D12DescriptorHeap), (void**)&m_pd3dRtvDescriptorHeap);
+	D3D12_CPU_DESCRIPTOR_HANDLE d3dRtvCPUDescriptorHandle = m_pd3dRtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+
+	CMesh* pMeshIlluminated = new CSphereMeshIlluminated(pd3dDevice, pd3dCommandList, 100.0f, 20, 20);
+
+	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
+	XMFLOAT2 xmf2TerrainCenter{};
+	if (pTerrain) {
+		xmf2TerrainCenter = XMFLOAT2(pTerrain->GetWidth() * 0.5f, pTerrain->GetLength() * 0.5f);
+	}
+
+	for (int i = 0; i < m_nObject; i++)
+	{
+		m_ppObjects[i] = new CDynamicCubeMappingObject(pd3dDevice, pd3dCommandList, m_nCubeMapSize, d3dDsvCPUDescriptorHandle, d3dRtvCPUDescriptorHandle, this);
+
+		m_ppObjects[i]->SetMesh(0, pMeshIlluminated);
+
+		if (pContext) {
+			float fHeight = pTerrain->GetHeight(xmf2TerrainCenter.x, xmf2TerrainCenter.y + 300);
+			m_ppObjects[i]->SetPosition(xmf2TerrainCenter.x, fHeight + 150.0f, xmf2TerrainCenter.y + 300);
+		}
+		else {
+			m_ppObjects[i]->SetPosition(0, 0, 0);
+		}
+		m_ppObjects[i]->SetCbvGPUDescriptorHandlePtr(d3dCbvGPUDescriptorStartHandle.ptr);
+
+		d3dCbvGPUDescriptorStartHandle.ptr += ::gnCbvSrvDescriptorIncrementSize;
+		d3dDsvCPUDescriptorHandle.ptr += ::gnDsvDescriptorIncrementSize;
+		d3dRtvCPUDescriptorHandle.ptr += (::gnRtvDescriptorIncrementSize * 6);
+	}
+}

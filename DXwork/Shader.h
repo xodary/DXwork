@@ -335,3 +335,12 @@ protected:
 	ID3D12DescriptorHeap*			m_pd3dRtvDescriptorHeap = NULL;
 	ID3D12DescriptorHeap*			m_pd3dDsvDescriptorHeap = NULL;
 };
+
+class CDynamicMappingShader : public CDynamicCubeMappingShader
+{
+public:
+	CDynamicMappingShader(UINT nCubeMapSize = 256);
+	virtual ~CDynamicMappingShader();
+
+	virtual void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, void* pContext = NULL);
+}
