@@ -19,7 +19,7 @@ public:
 	void AddRef() { m_nReferences++; }
 	void Release() { if (--m_nReferences <= 0) delete this; }
 
-	CGameObject** m_ppObjects = 0;
+	CGameObject**						m_ppObjects = 0;
 	int									m_nObject = 0;
 
 	LPCSTR								m_pszShaderName;
@@ -193,7 +193,7 @@ class CPlayer;
 class CBulletObject;
 class CTankObject;
 
-#define BULLETS					1
+#define BULLETS					10
 class CBulletShader : public CStandardShader
 {
 public:
@@ -210,7 +210,7 @@ public:
 	CScene							*m_pScene;
 };
 
-#define ENERMY					1
+#define ENERMY					10
 class CEnermyShader : public CStandardShader
 {
 public:
@@ -225,9 +225,12 @@ public:
 	CPlayer							*m_pPlayer;
 	CScene							*m_pScene;
 	CBulletShader					*m_pBulletShader;
+
+	CGameObject						** m_ppBullets;
+	int								m_nBullets;
 };
 
-#define TREE					1
+#define TREE					30
 class CTreeShader : public CStandardShader
 {
 public:
@@ -311,7 +314,7 @@ public:
 class CDynamicCubeMappingShader : public CTexturedShader
 {
 public:
-	CDynamicCubeMappingShader(UINT nCubeMapSize = 256);
+	CDynamicCubeMappingShader(UINT nCubeMapSize = 256, UINT nBoxSize = 256);
 	virtual ~CDynamicCubeMappingShader();
 
 	virtual D3D12_INPUT_LAYOUT_DESC CreateInputLayout();
@@ -329,6 +332,7 @@ public:
 
 protected:
 	ULONG							m_nCubeMapSize = 256;
+	UINT							m_nBoxSize = 256;
 
 	ID3D12CommandAllocator*			m_pd3dCommandAllocator = NULL;
 	ID3D12GraphicsCommandList*		m_pd3dCommandList = NULL;
@@ -340,12 +344,12 @@ protected:
 class CCubeMapSkyboxShader : public CTexturedShader
 {
 public:
-	CCubeMapSkyboxShader(UINT nCubeMapSize = 256);
+	CCubeMapSkyboxShader(UINT nCubeMapSize = 256, UINT nBoxSize = 256);
 	virtual ~CCubeMapSkyboxShader();
 	//virtual D3D12_DEPTH_STENCIL_DESC CreateDepthStencilState();
 
 	virtual D3D12_INPUT_LAYOUT_DESC CreateInputLayout();
-	virtual D3D12_RASTERIZER_DESC CreateRasterizerState();
+	//virtual D3D12_RASTERIZER_DESC CreateRasterizerState();
 	virtual D3D12_SHADER_BYTECODE CreateVertexShader(ID3DBlob** ppd3dShaderBlob);
 	virtual D3D12_SHADER_BYTECODE CreatePixelShader(ID3DBlob** ppd3dShaderBlob);
 	virtual void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, void* pContext = NULL);
@@ -354,6 +358,7 @@ public:
 	virtual void OnPreRender(ID3D12Device* pd3dDevice, ID3D12CommandQueue* pd3dCommandQueue, ID3D12Fence* pd3dFence, HANDLE hFenceEvent, CScene* pScene);
 
 	ULONG							m_nCubeMapSize = 256;
+	UINT							m_nBoxSize = 256;
 
 	ID3D12CommandAllocator*			m_pd3dCommandAllocator = NULL;
 	ID3D12GraphicsCommandList*		m_pd3dCommandList = NULL;
@@ -361,23 +366,4 @@ public:
 	ID3D12DescriptorHeap*			m_pd3dRtvDescriptorHeap = NULL;
 	ID3D12DescriptorHeap*			m_pd3dDsvDescriptorHeap = NULL;
 
-};
-
-class CMirrorShader : public CTexturedShader
-{
-public:
-	CScene*							m_pScene;
-	CGameObject*					m_pMirrorObject;
-	ID3D12DescriptorHeap*			m_pd3dDsvDescriptorHeap;
-
-	CMirrorShader::CMirrorShader(CScene* pScene);
-	CMirrorShader::~CMirrorShader();
-
-	virtual void CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature* pd3dGraphicsRootSignature);
-	virtual void OnPrepareRender(ID3D12GraphicsCommandList* pd3dCommandList);
-	virtual D3D12_DEPTH_STENCIL_DESC CreateDepthStencilState();
-	virtual D3D12_BLEND_DESC CreateBlendState();
-	virtual D3D12_RASTERIZER_DESC CreateRasterizerState();
-	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
-	virtual void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, void* pContext = NULL);
 };

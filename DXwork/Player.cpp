@@ -306,8 +306,8 @@ CCamera* CTerrainPlayer::ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed)
 		break;
 	case THIRD_PERSON_CAMERA:
 		SetFriction(250.0f);
-		//SetGravity(XMFLOAT3(0.0f, -250.0f, 0.0f));
-		SetGravity(XMFLOAT3(0.0f, 0.0f, 0.0f));
+		SetGravity(XMFLOAT3(0.0f, -250.0f, 0.0f));
+		//SetGravity(XMFLOAT3(0.0f, 0.0f, 0.0f));
 		SetMaxVelocityXZ(300.0f);
 		SetMaxVelocityY(400.0f);
 		m_pCamera = OnChangeCamera(THIRD_PERSON_CAMERA, nCurrentCameraMode);
@@ -340,7 +340,7 @@ void CTerrainPlayer::OnPlayerUpdateCallback(float fTimeElapsed)
 		XMVECTOR vTerrainNormal = XMLoadFloat3(&terrainNormal);
 		XMVECTOR vTankNormal = XMLoadFloat3(&m_xmf3Up);
 
-		XMVECTOR lerpedVector = XMVectorLerp(vTerrainNormal, vTankNormal, fTimeElapsed * 40);
+		XMVECTOR lerpedVector = XMVectorLerp(vTerrainNormal, vTankNormal, min(0.7, fTimeElapsed * 40));
 		
 		XMStoreFloat3(&m_xmf3Up, lerpedVector);
 		XMStoreFloat3(&m_xmf3Right, XMVector3Cross(XMLoadFloat3(&m_xmf3Up), XMLoadFloat3(&m_xmf3Look)));

@@ -120,4 +120,6 @@ public:
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent = NULL);
 	void RotateTurret(float fAngle);
 	CGameObject* GetTurret() { return m_pTurretFrame; }
+
+	int								m_killedEnermy = 0;
 };

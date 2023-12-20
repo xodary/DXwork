@@ -113,7 +113,7 @@ void UILayer::Render(UINT nFrame)
     m_pd3d11On12Device->AcquireWrappedResources(ppResources, _countof(ppResources));
 
     m_pd2dDeviceContext->BeginDraw();
-    for (UINT i = 0; i < m_nTextBlocks; i++)
+    for (UINT i = 1; i < m_nTextBlocks; i++)
     {
         m_pd2dDeviceContext->DrawText(m_pTextBlocks[i].m_pstrText, (UINT)wcslen(m_pTextBlocks[i].m_pstrText), m_pTextBlocks[i].m_pdwFormat, m_pTextBlocks[i].m_d2dLayoutRect, m_pTextBlocks[i].m_pd2dTextBrush);
     }

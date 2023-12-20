@@ -801,10 +801,10 @@ void CBulletShader::AnimateObjects(float fTimeElapsed)
 			if (m_ppObjects[j]->m_bActive)
 			{
 				((CBulletObject*)m_ppObjects[j])->Animate(fTimeElapsed);
-				if (m_pScene->CheckSceneCollisions(m_ppObjects[j]))
-				{
-					std::cout << "ÃÑ¾Ë - ¾À ¿ÀºêÁ§Æ® Ãæµ¹" << std::endl;
-				}
+				// if (m_pScene->CheckSceneCollisions(m_ppObjects[j]))
+				// {
+				// 	std::cout << "ÃÑ¾Ë - ¾À ¿ÀºêÁ§Æ® Ãæµ¹" << std::endl;
+				// }
 			}
 		}
 	}
@@ -843,8 +843,8 @@ void CBulletShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* 
 
 CEnermyShader::CEnermyShader()
 {
-	m_nObject = ENERMY;
-	m_ppObjects = new CGameObject * [m_nObject];
+	m_nBullets = ENERMY;
+	m_ppBullets = new CGameObject * [m_nBullets];
 }
 
 CEnermyShader::~CEnermyShader()
@@ -857,57 +857,70 @@ CEnermyShader::~CEnermyShader()
 		for (int i = 0; i < m_nPipelineStates; i++) if (m_ppd3dPipelineStates[i]) m_ppd3dPipelineStates[i]->Release();
 		delete[] m_ppd3dPipelineStates;
 	}
-	if (m_ppObjects)
+	if (m_ppBullets)
 	{
-		for (int i = 0; i < m_nObject; i++) if (m_ppObjects[i]) m_ppObjects[i]->Release();
-		delete[] m_ppObjects;
+		for (int i = 0; i < m_nBullets; i++) if (m_ppBullets[i]) m_ppBullets[i]->Release();
+		delete[] m_ppBullets;
 	}
 }
 
 std::default_random_engine dre;
-std::uniform_real_distribution<float> uid(0, 2000.0);
+std::uniform_real_distribution<float> uid(1000-500, 1000+500.0);
 void CEnermyShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, CScene* pScene, void* pContext)
 {
 	m_pScene = pScene;
 
 	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
-	CreateCbvSrvDescriptorHeaps(pd3dDevice, 10 * m_nObject, 6 * m_nObject); 
-	CGameObject* pTankModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/TankFree_Red.bin", this);
-	for (int h = 0; h < m_nObject; h++)
+	CreateCbvSrvDescriptorHeaps(pd3dDevice, 10 * m_nBullets, 6 * m_nBullets);
+	for (int h = 0; h < m_nBullets; h++)
 	{
-		m_ppObjects[h] = new CTankObject();
-		m_ppObjects[h]->SetChild(pTankModel);
-		CreateShaderVariablesAndCreateCBV(pd3dDevice, pd3dCommandList, m_ppObjects[h]);
-		((CTankObject*)m_ppObjects[h])->m_pTerrain = (CHeightMapTerrain*)pContext;
+		CGameObject* pTankModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/TankFree_Red.bin", this);
+		m_ppBullets[h] = new CTankObject();
+		m_ppBullets[h]->SetChild(pTankModel);
+		CreateShaderVariablesAndCreateCBV(pd3dDevice, pd3dCommandList, m_ppBullets[h]);
+		((CTankObject*)m_ppBullets[h])->m_pTerrain = (CHeightMapTerrain*)pContext;
 
 		// Random
-		
-		// XMFLOAT3 xmf3RandomPosition{ uid(dre),0,uid(dre) };
-		// m_ppObjects[h]->SetPosition(xmf3RandomPosition.x, pTerrain->GetHeight(xmf3RandomPosition.x, xmf3RandomPosition.z), xmf3RandomPosition.z);
-		
-		XMFLOAT3 xmf3Position{ pTerrain->GetWidth() * 0.5f + 10 + 50, 0, pTerrain->GetLength() * 0.5f + 10 + 50 };
-		m_ppObjects[h]->SetPosition(xmf3Position.x, pTerrain->GetHeight(xmf3Position.x, xmf3Position.z), xmf3Position.z);
+		XMFLOAT3 xmf3RandomPosition{ uid(dre),0,uid(dre) };
+		while (pTerrain->GetHeight(xmf3RandomPosition.x, xmf3RandomPosition.z) < 150.0f)
+			xmf3RandomPosition = XMFLOAT3{ uid(dre),0,uid(dre) };
+		m_ppBullets[h]->SetPosition(xmf3RandomPosition.x, pTerrain->GetHeight(xmf3RandomPosition.x, xmf3RandomPosition.z), xmf3RandomPosition.z);
+		((CTankObject*)m_ppBullets[h])->m_HP = 100;
+
+		//XMFLOAT3 xmf3Position{ pTerrain->GetWidth() * 0.5f + 10 + 50, 0, pTerrain->GetLength() * 0.5f + 10 + 50 };
+		//m_ppObjects[h]->SetPosition(xmf3Position.x, pTerrain->GetHeight(xmf3Position.x, xmf3Position.z), xmf3Position.z);
 	}
 }
 
 void CEnermyShader::AnimateObjects(float fTimeElapsed)
 {
-	for (int i = 0; i < m_nObject; i++) 
+	for (int i = 0; i < m_nBullets; i++)
 	{
-		CTankObject* enermyObject = (CTankObject*)m_ppObjects[i];
-		if (enermyObject) {
+		CTankObject* enermyObject = (CTankObject*)m_ppBullets[i];
+		if (enermyObject != NULL) {
+			enermyObject->UpdateBoundingBox();
 			enermyObject->Animate(fTimeElapsed, NULL, m_pPlayer);
-			for (int j = 0; j < m_pBulletShader->m_nObject; j++)
+  			for (int j = 0; j < m_pBulletShader->m_nObject; j++)
 			{
 				CBulletObject* bulletObject = (CBulletObject*)m_pBulletShader->m_ppObjects[j];
 				if (bulletObject->m_bActive)
 				{
-					if (m_pScene->CheckObjectByObjectCollisions(enermyObject, bulletObject))
+					if (m_pScene->CheckObjectByObjectCollisions(bulletObject, enermyObject, false))
 					{
 						// ÃÑ¾Ë°ú Àû °´Ã¼ Ãæµ¹
 						enermyObject->m_HP -= 20;
-						std::cout << "ÃÑ¾Ë - Àû Ãæµ¹. ÀûÀÇ HP = " << enermyObject->m_HP << std::endl;
+						std::cout << i << "¹øÂ° Àû ÃÑ ¸ÂÀ½" << enermyObject->m_HP << std::endl;
+						printf("%f, %f, %f Àû À§Ä¡\n", enermyObject->GetPosition().x, enermyObject->GetPosition().y, enermyObject->GetPosition().z);
+						printf("%f, %f, %f ÃÑ¾Ë À§Ä¡\n", bulletObject->GetPosition().x, bulletObject->GetPosition().y, bulletObject->GetPosition().z);
 						bulletObject->Reset();
+
+						if (enermyObject->m_HP <= 0)
+						{
+							std::cout << i << "¹øÂ° Àû »èÁ¦" << std::endl;
+							delete enermyObject;
+  							m_ppBullets[i] = NULL;
+							((CTankPlayer*)m_pPlayer)->m_killedEnermy += 1;
+						}
 					}
 				}
 			}
@@ -917,27 +930,27 @@ void CEnermyShader::AnimateObjects(float fTimeElapsed)
 
 void CEnermyShader::ReleaseObjects()
 {
-	if (m_ppObjects)
+	if (m_ppBullets)
 	{
-		for (int j = 0; j < m_nObject; j++) if (m_ppObjects[j]) m_ppObjects[j]->Release();
-		delete[] m_ppObjects;
+		for (int j = 0; j < m_nBullets; j++) if (m_ppBullets[j]) m_ppBullets[j]->Release();
+		delete[] m_ppBullets;
 	}
 }
 
 void CEnermyShader::ReleaseUploadBuffers()
 {
-	for (int j = 0; j < m_nObject; j++) if (m_ppObjects[j]) m_ppObjects[j]->ReleaseUploadBuffers();
+	for (int j = 0; j < m_nBullets; j++) if (m_ppBullets[j]) m_ppBullets[j]->ReleaseUploadBuffers();
 }
 
 void CEnermyShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
 {
 	CShader::Render(pd3dCommandList, pCamera);
 
-	for (int j = 0; j < m_nObject; j++)
+	for (int j = 0; j < m_nBullets; j++)
 	{
-		if (m_ppObjects[j])
+		if (m_ppBullets[j])
 		{
-			m_ppObjects[j]->Render(pd3dCommandList, pCamera);
+			m_ppBullets[j]->Render(pd3dCommandList, pCamera);
 		}
 	}
 }
@@ -981,13 +994,13 @@ void CTreeShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandLi
 		m_ppObjects[h]->SetChild(pTreeModel);
 		CreateShaderVariablesAndCreateCBV(pd3dDevice, pd3dCommandList, m_ppObjects[h]);
 		// Random 
-		// XMFLOAT3 xmf3RandomPosition{ uid(dre),0,uid(dre) };
-		// while (pTerrain->GetHeight(xmf3RandomPosition.x, xmf3RandomPosition.z) < 150.0f)
-		// 	xmf3RandomPosition = XMFLOAT3{ uid(dre),0,uid(dre) };
-		// m_ppObjects[h]->SetPosition(xmf3RandomPosition.x, pTerrain->GetHeight(xmf3RandomPosition.x, xmf3RandomPosition.z), xmf3RandomPosition.z);
+		 XMFLOAT3 xmf3RandomPosition{ uid(dre),0,uid(dre) };
+		 while (pTerrain->GetHeight(xmf3RandomPosition.x, xmf3RandomPosition.z) < 150.0f)
+		 	xmf3RandomPosition = XMFLOAT3{ uid(dre),0,uid(dre) };
+		 m_ppObjects[h]->SetPosition(xmf3RandomPosition.x, pTerrain->GetHeight(xmf3RandomPosition.x, xmf3RandomPosition.z), xmf3RandomPosition.z);
 	
-		XMFLOAT3 xmf3Position{ pTerrain->GetWidth() * 0.5f + 10, 0, pTerrain->GetLength() * 0.5f + 10 + 50  };
-		m_ppObjects[h]->SetPosition(xmf3Position.x, pTerrain->GetHeight(xmf3Position.x, xmf3Position.z), xmf3Position.z);
+		//XMFLOAT3 xmf3Position{ pTerrain->GetWidth() * 0.5f + 10, 0, pTerrain->GetLength() * 0.5f + 10 + 50  };
+		//m_ppObjects[h]->SetPosition(xmf3Position.x, pTerrain->GetHeight(xmf3Position.x, xmf3Position.z), xmf3Position.z);
 	}
 }
 
@@ -1141,7 +1154,7 @@ CBillboardObjectsShader::CBillboardObjectsShader()
 		}
 	}
 	//m_nObject = nGrassObjects + nFlowerObjects + nTreeObjects[0] + nTreeObjects[1] + nTreeObjects[2];
-	m_nObject = 1;
+	m_nObject = 5;
 }
 
 CBillboardObjectsShader::~CBillboardObjectsShader()
@@ -1281,25 +1294,27 @@ void CBillboardObjectsShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12Graph
 	pMaterial = ppGrassMaterials[0];
 	fyOffset = 8.0f * 0.5f;
 
-	if (pMesh && pMaterial)
+	for (int i = 0; i < 5; ++i)
 	{
-		pBillboardObject = new CGrassObject();
+		if (pMesh && pMaterial)
+		{
+			pBillboardObject = new CGrassObject();
 
-		pBillboardObject->SetMesh(0, pMesh);
-		pBillboardObject->SetMaterial(0, pMaterial);
+			pBillboardObject->SetMesh(0, pMesh);
+			pBillboardObject->SetMaterial(0, pMaterial);
 
-		//float xPosition = x * xmf3Scale.x;
-		//float zPosition = z * xmf3Scale.z;
+			//float xPosition = x * xmf3Scale.x;
+			//float zPosition = z * xmf3Scale.z;
 
-		XMFLOAT3 xmf3Position{ pTerrain->GetWidth() * 0.5f + 10 - 10, 0, pTerrain->GetLength() * 0.5f + 10 + 50 };
-		float fHeight = pTerrain->GetHeight(xmf3Position.x, xmf3Position.z);
-		pBillboardObject->SetPosition(xmf3Position.x, fHeight + fyOffset, xmf3Position.z);
-		//pBillboardObject->SetPosition(xPosition, fHeight + fyOffset, zPosition);
-		pBillboardObject->SetCbvGPUDescriptorHandlePtr(d3dCbvGPUDescriptorNextHandle.ptr + (::gnCbvSrvDescriptorIncrementSize * 0));
+			XMFLOAT3 xmf3Position{ pTerrain->GetWidth() * 0.5f + 10 - 20 * i, 0, pTerrain->GetLength() * 0.5f + 20 * i };
+			float fHeight = pTerrain->GetHeight(xmf3Position.x, xmf3Position.z);
+			pBillboardObject->SetPosition(xmf3Position.x, fHeight + fyOffset, xmf3Position.z);
+			//pBillboardObject->SetPosition(xPosition, fHeight + fyOffset, zPosition);
+			pBillboardObject->SetCbvGPUDescriptorHandlePtr(d3dCbvGPUDescriptorNextHandle.ptr + (::gnCbvSrvDescriptorIncrementSize * 0));
 
-		m_ppObjects[0] = pBillboardObject;
+			m_ppObjects[i] = pBillboardObject;
+		}
 	}
-
 	//for (int i = 0, z = 2; z <= 254; z++)
 	//{
 	//	for (int x = 2; x <= 254; x++)
@@ -1539,16 +1554,15 @@ void CTerrainTessellationShader::OnPrepareRender(ID3D12GraphicsCommandList* pd3d
 	if (m_pd3dGraphicsRootSignature) pd3dCommandList->SetGraphicsRootSignature(m_pd3dGraphicsRootSignature);
 	if (m_ppd3dPipelineStates) pd3dCommandList->SetPipelineState((::gbTerrainTessellationWireframe) ? m_ppd3dPipelineStates[1] : m_ppd3dPipelineStates[0]);
 	if (m_pd3dCbvSrvDescriptorHeap) pd3dCommandList->SetDescriptorHeaps(1, &m_pd3dCbvSrvDescriptorHeap);
-
-	// UpdateShaderVariables(pd3dCommandList);
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-CDynamicCubeMappingShader::CDynamicCubeMappingShader(UINT nCubeMapSize)
+CDynamicCubeMappingShader::CDynamicCubeMappingShader(UINT nCubeMapSize, UINT nBoxSize)
 {
 	m_nCubeMapSize = nCubeMapSize;
+	m_nBoxSize = nBoxSize;
 }
 
 CDynamicCubeMappingShader::~CDynamicCubeMappingShader()
@@ -1627,7 +1641,7 @@ void CDynamicCubeMappingShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12Gra
 	pd3dDevice->CreateDescriptorHeap(&d3dDescriptorHeapDesc, __uuidof(ID3D12DescriptorHeap), (void**)&m_pd3dRtvDescriptorHeap);
 	D3D12_CPU_DESCRIPTOR_HANDLE d3dRtvCPUDescriptorHandle = m_pd3dRtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 
-	CMesh* pMeshIlluminated = new CSphereMeshIlluminated(pd3dDevice, pd3dCommandList, 100.0f, 20, 20);
+	CMesh* pMeshIlluminated = new CSphereMeshIlluminated(pd3dDevice, pd3dCommandList, 50.0f, 20, 20);
 
 	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
 	XMFLOAT2 xmf2TerrainCenter{};
@@ -1637,13 +1651,13 @@ void CDynamicCubeMappingShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12Gra
 
 	for (int i = 0; i < m_nObject; i++)
 	{
-		m_ppObjects[i] = new CDynamicCubeMappingObject(pd3dDevice, pd3dCommandList, m_nCubeMapSize, d3dDsvCPUDescriptorHandle, d3dRtvCPUDescriptorHandle, this);
+		m_ppObjects[i] = new CDynamicCubeMappingObject(pd3dDevice, pd3dCommandList, m_nCubeMapSize, m_nCubeMapSize, d3dDsvCPUDescriptorHandle, d3dRtvCPUDescriptorHandle, this);
 
 		m_ppObjects[i]->SetMesh(0, pMeshIlluminated);
 
 		if (pContext) {
 			float fHeight = pTerrain->GetHeight(xmf2TerrainCenter.x, xmf2TerrainCenter.y + 300);
-			m_ppObjects[i]->SetPosition(xmf2TerrainCenter.x, fHeight + 150.0f, xmf2TerrainCenter.y + 300);
+			m_ppObjects[i]->SetPosition(xmf2TerrainCenter.x, fHeight, xmf2TerrainCenter.y + 300);
 		}
 		else {
 			m_ppObjects[i]->SetPosition(0, 0, 0);
@@ -1698,217 +1712,10 @@ void CDynamicCubeMappingShader::Render(ID3D12GraphicsCommandList* pd3dCommandLis
 	}
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////
-D3D12_RASTERIZER_DESC CMirrorShader::CreateRasterizerState()
-{
-	D3D12_RASTERIZER_DESC d3dRasterizerDesc;
-	::ZeroMemory(&d3dRasterizerDesc, sizeof(D3D12_RASTERIZER_DESC));
-	//	d3dRasterizerDesc.FillMode = D3D12_FILL_MODE_WIREFRAME;
-	d3dRasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
-	d3dRasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
-	d3dRasterizerDesc.FrontCounterClockwise = TRUE;	//
-	d3dRasterizerDesc.DepthBias = 0;
-	d3dRasterizerDesc.DepthBiasClamp = 0.0f;
-	d3dRasterizerDesc.SlopeScaledDepthBias = 0.0f;
-	d3dRasterizerDesc.DepthClipEnable = TRUE;
-	d3dRasterizerDesc.MultisampleEnable = FALSE;
-	d3dRasterizerDesc.AntialiasedLineEnable = FALSE;
-	d3dRasterizerDesc.ForcedSampleCount = 0;
-	d3dRasterizerDesc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
-
-	return(d3dRasterizerDesc);
-}
-
-D3D12_DEPTH_STENCIL_DESC CMirrorShader::CreateDepthStencilState()
-{
-	D3D12_DEPTH_STENCIL_DESC d3dDepthStencilDesc;
-	::ZeroMemory(&d3dDepthStencilDesc, sizeof(D3D12_DEPTH_STENCIL_DESC));
-	d3dDepthStencilDesc.DepthEnable = TRUE;
-	d3dDepthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
-	d3dDepthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-	d3dDepthStencilDesc.StencilEnable = TRUE;	//
-	d3dDepthStencilDesc.StencilReadMask = d3dDepthStencilDesc.StencilWriteMask = 0xff;	//
-	d3dDepthStencilDesc.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
-	d3dDepthStencilDesc.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-	d3dDepthStencilDesc.FrontFace.StencilPassOp = D3D12_STENCIL_OP_REPLACE;
-	d3dDepthStencilDesc.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;	//
-	d3dDepthStencilDesc.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
-	d3dDepthStencilDesc.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-	d3dDepthStencilDesc.BackFace.StencilPassOp = D3D12_STENCIL_OP_REPLACE;
-	d3dDepthStencilDesc.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
-
-	return(d3dDepthStencilDesc);
-}
-
-D3D12_BLEND_DESC CMirrorShader::CreateBlendState()
-{
-	D3D12_BLEND_DESC d3dBlendDesc;
-	::ZeroMemory(&d3dBlendDesc, sizeof(D3D12_BLEND_DESC));
-	d3dBlendDesc.AlphaToCoverageEnable = FALSE;
-	d3dBlendDesc.IndependentBlendEnable = FALSE;
-	d3dBlendDesc.RenderTarget[0].BlendEnable = FALSE;
-	d3dBlendDesc.RenderTarget[0].LogicOpEnable = FALSE;
-	d3dBlendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_ONE;
-	d3dBlendDesc.RenderTarget[0].DestBlend = D3D12_BLEND_ZERO;
-	d3dBlendDesc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
-	d3dBlendDesc.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
-	d3dBlendDesc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
-	d3dBlendDesc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
-	d3dBlendDesc.RenderTarget[0].LogicOp = D3D12_LOGIC_OP_NOOP;
-	d3dBlendDesc.RenderTarget[0].RenderTargetWriteMask = 0;
-
-	return(d3dBlendDesc);
-}
-
-CMirrorShader::CMirrorShader(CScene* pScene)
-{
-	m_pScene = pScene;
-}
-
-CMirrorShader::~CMirrorShader()
-{
-}
-
-void CMirrorShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature* pd3dGraphicsRootSignature)
-{
-	if (pd3dGraphicsRootSignature)
-	{
-		m_pd3dGraphicsRootSignature = pd3dGraphicsRootSignature;
-		pd3dGraphicsRootSignature->AddRef();
-	}
-
-	m_nPipelineStates = 4;
-	m_ppd3dPipelineStates = new ID3D12PipelineState * [m_nPipelineStates];
-
-	ID3DBlob* pd3dVertexShaderBlob = NULL, * pd3dPixelShaderBlob = NULL, * pd3dHullShaderBlob = NULL, * pd3dDomainShaderBlob = NULL;
-
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC d3dPipelineStateDesc;
-	::ZeroMemory(&d3dPipelineStateDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
-	d3dPipelineStateDesc.pRootSignature = m_pd3dGraphicsRootSignature;
-	d3dPipelineStateDesc.VS = CreateVertexShader(&pd3dVertexShaderBlob);
-	d3dPipelineStateDesc.PS = CreatePixelShader(&pd3dPixelShaderBlob);
-	d3dPipelineStateDesc.HS = CreateHullShader(&pd3dHullShaderBlob);
-	d3dPipelineStateDesc.DS = CreateDomainShader(&pd3dDomainShaderBlob);
-	d3dPipelineStateDesc.RasterizerState = CreateRasterizerState();
-	d3dPipelineStateDesc.BlendState = CreateBlendState();
-	d3dPipelineStateDesc.DepthStencilState = CreateDepthStencilState();
-	d3dPipelineStateDesc.InputLayout = CreateInputLayout();
-	d3dPipelineStateDesc.SampleMask = UINT_MAX;
-	d3dPipelineStateDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
-	d3dPipelineStateDesc.NumRenderTargets = 1;
-	d3dPipelineStateDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-	d3dPipelineStateDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	d3dPipelineStateDesc.SampleDesc.Count = 1;
-	d3dPipelineStateDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
-	HRESULT hResult = pd3dDevice->CreateGraphicsPipelineState(&d3dPipelineStateDesc, __uuidof(ID3D12PipelineState), (void**)&m_ppd3dPipelineStates[0]);
-
-	d3dPipelineStateDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-	d3dPipelineStateDesc.DepthStencilState.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
-	
-	hResult = pd3dDevice->CreateGraphicsPipelineState(&d3dPipelineStateDesc, __uuidof(ID3D12PipelineState), (void**)&m_ppd3dPipelineStates[1]);
-
-	d3dPipelineStateDesc.BlendState.RenderTarget[0].BlendEnable = TRUE;
-	d3dPipelineStateDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
-	d3dPipelineStateDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
-	d3dPipelineStateDesc.BlendState.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
-	d3dPipelineStateDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-
-	hResult = pd3dDevice->CreateGraphicsPipelineState(&d3dPipelineStateDesc, __uuidof(ID3D12PipelineState), (void**)&m_ppd3dPipelineStates[2]);
-
-	d3dPipelineStateDesc.DepthStencilState.DepthEnable = TRUE;
-	d3dPipelineStateDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
-	d3dPipelineStateDesc.DepthStencilState.StencilEnable = FALSE;
-	hResult = pd3dDevice->CreateGraphicsPipelineState(&d3dPipelineStateDesc, __uuidof(ID3D12PipelineState), (void**)&m_ppd3dPipelineStates[3]);
-
-	if (pd3dVertexShaderBlob) pd3dVertexShaderBlob->Release();
-	if (pd3dPixelShaderBlob) pd3dPixelShaderBlob->Release();
-	if (pd3dHullShaderBlob) pd3dHullShaderBlob->Release();
-	if (pd3dDomainShaderBlob) pd3dDomainShaderBlob->Release();
-
-	if (d3dPipelineStateDesc.InputLayout.pInputElementDescs) delete[] d3dPipelineStateDesc.InputLayout.pInputElementDescs;
-}
-
-void CMirrorShader::OnPrepareRender(ID3D12GraphicsCommandList* pd3dCommandList)
-{
-	if (m_pd3dGraphicsRootSignature) pd3dCommandList->SetGraphicsRootSignature(m_pd3dGraphicsRootSignature);
-	if (m_pd3dCbvSrvDescriptorHeap) pd3dCommandList->SetDescriptorHeaps(1, &m_pd3dCbvSrvDescriptorHeap);
-}
-
-void CMirrorShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, void* pContext)
-{
-	m_nObject = 1;
-	m_ppObjects = new CGameObject * [m_nObject];
-
-	D3D12_GPU_DESCRIPTOR_HANDLE d3dCbvGPUDescriptorStartHandle = m_d3dCbvGPUDescriptorStartHandle;
-	D3D12_DESCRIPTOR_HEAP_DESC d3dDescriptorHeapDesc;
-	d3dDescriptorHeapDesc.NumDescriptors = m_nObject;
-	d3dDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-	d3dDescriptorHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-	d3dDescriptorHeapDesc.NodeMask = 0;
-	
-	HRESULT hResult = pd3dDevice->CreateDescriptorHeap(&d3dDescriptorHeapDesc, __uuidof(ID3D12DescriptorHeap), (void**)&m_pd3dDsvDescriptorHeap);
-	D3D12_CPU_DESCRIPTOR_HANDLE d3dDsvCPUDescriptorHandle = m_pd3dDsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	//Depth Buffer & View
-	D3D12_CLEAR_VALUE d3dDsbClearValue = { DXGI_FORMAT_D24_UNORM_S8_UINT, { 1.0f, 0 } };
-	ID3D12Resource* m_pd3dDepthStencilBuffer = ::CreateTexture2DResource(pd3dDevice, pd3dCommandList, 256, 256, 1, 1,
-		DXGI_FORMAT_D24_UNORM_S8_UINT, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, D3D12_RESOURCE_STATE_DEPTH_WRITE, &d3dDsbClearValue);
-	pd3dDevice->CreateDepthStencilView(m_pd3dDepthStencilBuffer, NULL, d3dDsvCPUDescriptorHandle);
-
-	CMesh* pTextureRectMesh = new CTexturedRectMesh(pd3dDevice, pd3dCommandList, 256.f, 256.f);
-
-	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
-	XMFLOAT2 xmf2TerrainCenter{};
-	if (pTerrain) {
-		xmf2TerrainCenter = XMFLOAT2(pTerrain->GetWidth() * 0.5f, pTerrain->GetLength() * 0.5f);
-	}
-
-	for (int i = 0; i < m_nObject; i++)
-	{
-		m_ppObjects[i] = new CGameObject();
-		m_ppObjects[i]->SetMesh(0, pTextureRectMesh);
-
-		if (pContext) {
-			float fHeight = pTerrain->GetHeight(xmf2TerrainCenter.x, xmf2TerrainCenter.y + 300);
-			m_ppObjects[i]->SetPosition(xmf2TerrainCenter.x, fHeight + 150.0f, xmf2TerrainCenter.y + 300);
-		}
-		else {
-			m_ppObjects[i]->SetPosition(0, 0, 0);
-		}
-		m_ppObjects[i]->SetCbvGPUDescriptorHandlePtr(d3dCbvGPUDescriptorStartHandle.ptr);
-
-		d3dCbvGPUDescriptorStartHandle.ptr += ::gnCbvSrvDescriptorIncrementSize;
-		d3dDsvCPUDescriptorHandle.ptr += ::gnDsvDescriptorIncrementSize;
-	}
-
-}
-
-void CMirrorShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
-{
-	pd3dCommandList->SetPipelineState(m_ppd3dPipelineStates[3]); // °Å¿ï µÞ¸é ·»´õ¸µ
-	for (int i = 0; i < m_nObject; ++i)
-		m_ppObjects[i]->Render(pd3dCommandList, pCamera);
-	
-	D3D12_CPU_DESCRIPTOR_HANDLE d3dDsvCPUDescriptorHandle = m_pd3dDsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	pd3dCommandList->ClearDepthStencilView(d3dDsvCPUDescriptorHandle, D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
-
-	pd3dCommandList->OMSetStencilRef(1);
-	pd3dCommandList->SetPipelineState(m_ppd3dPipelineStates[0]);
-	for (int i = 0; i < m_nObject; ++i)
-		m_ppObjects[i]->Render(pd3dCommandList, pCamera);
-
-	pd3dCommandList->OMSetStencilRef(1);
-	pd3dCommandList->SetPipelineState(m_ppd3dPipelineStates[1]);
-	m_pScene->Render(pd3dCommandList, pCamera);
-
-	pd3dCommandList->OMSetStencilRef(0);
-	pd3dCommandList->SetPipelineState(m_ppd3dPipelineStates[2]);
-	for (int i = 0; i < m_nObject; ++i)
-		m_ppObjects[i]->Render(pd3dCommandList, pCamera);
-}
-
-CCubeMapSkyboxShader::CCubeMapSkyboxShader(UINT nCubeMapSize)
+CCubeMapSkyboxShader::CCubeMapSkyboxShader(UINT nCubeMapSize, UINT nBoxSize)
 {
 	m_nCubeMapSize = nCubeMapSize;
+	m_nBoxSize = nBoxSize;
 }
 
 CCubeMapSkyboxShader::~CCubeMapSkyboxShader()
@@ -1928,25 +1735,6 @@ D3D12_INPUT_LAYOUT_DESC CCubeMapSkyboxShader::CreateInputLayout()
 	d3dInputLayoutDesc.NumElements = nInputElementDescs;
 
 	return(d3dInputLayoutDesc);
-}
-
-D3D12_RASTERIZER_DESC CCubeMapSkyboxShader::CreateRasterizerState()
-{
-	D3D12_RASTERIZER_DESC d3dRasterizerDesc;
-	::ZeroMemory(&d3dRasterizerDesc, sizeof(D3D12_RASTERIZER_DESC));
-	d3dRasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
-	d3dRasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
-	d3dRasterizerDesc.FrontCounterClockwise = FALSE;
-	d3dRasterizerDesc.DepthBias = 0;
-	d3dRasterizerDesc.DepthBiasClamp = 0.0f;
-	d3dRasterizerDesc.SlopeScaledDepthBias = 0.0f;
-	d3dRasterizerDesc.DepthClipEnable = TRUE;
-	d3dRasterizerDesc.MultisampleEnable = FALSE;
-	d3dRasterizerDesc.AntialiasedLineEnable = FALSE;
-	d3dRasterizerDesc.ForcedSampleCount = 0;
-	d3dRasterizerDesc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
-
-	return(d3dRasterizerDesc);
 }
 
 void CCubeMapSkyboxShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, void* pContext)
@@ -1976,27 +1764,17 @@ void CCubeMapSkyboxShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12Graphics
 	pd3dDevice->CreateDescriptorHeap(&d3dDescriptorHeapDesc, __uuidof(ID3D12DescriptorHeap), (void**)&m_pd3dRtvDescriptorHeap);
 	D3D12_CPU_DESCRIPTOR_HANDLE d3dRtvCPUDescriptorHandle = m_pd3dRtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 
-	CMesh* pBoxMeshIlluminated = new CBoxMeshIlluminated(pd3dDevice, pd3dCommandList, m_nCubeMapSize, m_nCubeMapSize, m_nCubeMapSize);
-
-	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
-	XMFLOAT2 xmf2TerrainCenter{};
-	if (pTerrain) {
-		xmf2TerrainCenter = XMFLOAT2(pTerrain->GetWidth() * 0.5f, pTerrain->GetLength() * 0.5f);
-	}
+	CMesh* pBoxMeshIlluminated = new CBoxMeshIlluminated(pd3dDevice, pd3dCommandList, m_nBoxSize, m_nBoxSize, m_nBoxSize);
 
 	for (int i = 0; i < m_nObject; i++)
 	{
-		m_ppObjects[i] = new CSkyboxMappingObject(pd3dDevice, pd3dCommandList, m_nCubeMapSize, d3dDsvCPUDescriptorHandle, d3dRtvCPUDescriptorHandle, this);
+		m_ppObjects[i] = new CSkyboxMappingObject(pd3dDevice, pd3dCommandList, m_nCubeMapSize, m_nBoxSize, d3dDsvCPUDescriptorHandle, d3dRtvCPUDescriptorHandle, this);
 
 		m_ppObjects[i]->SetMesh(0, pBoxMeshIlluminated);
 
-		if (pContext) {
-			float fHeight = pTerrain->GetHeight(xmf2TerrainCenter.x, xmf2TerrainCenter.y);
-			m_ppObjects[i]->SetPosition(xmf2TerrainCenter.x, fHeight, xmf2TerrainCenter.y);
-		}
-		else {
-			m_ppObjects[i]->SetPosition(0, 0, 100);
-		}
+		m_ppObjects[i]->SetPosition(0, -5400, 0);
+		// m_ppObjects[i]->SetPosition(0, 0, 0);
+
 		m_ppObjects[i]->SetCbvGPUDescriptorHandlePtr(d3dCbvGPUDescriptorStartHandle.ptr);
 
 		d3dCbvGPUDescriptorStartHandle.ptr += ::gnCbvSrvDescriptorIncrementSize;

@@ -21,7 +21,8 @@ public:
 	bool CheckSceneCollisions(CGameObject* pTargetGameObject);
 	bool CheckEnvironmentMapCollision();
 	bool CheckObjectByObjectCollisions(CGameObject* pObjectA, CGameObject* pObjectB, bool isAsphere=false);
-
+	bool CheckInMirrorCollision();
+	bool CheckObjectByBoundingBoxCollision(BoundingOrientedBox box, CGameObject* object);
 	void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
 	void AddCollisionObject(CShader* pShader, CGameObject**& ppObject, int& nObject);
 	ID3D12RootSignature* CreateGraphicsRootSignature(ID3D12Device* pd3dDevice);
@@ -61,6 +62,7 @@ public:
 	CGameObject					**m_ppEnvironmentMapObjects = NULL;
 	int							m_nEnvironmentMapObjects = 0;
 
-
 	bool						isCollided = false;
+
+	bool						inMirror = false;
 };

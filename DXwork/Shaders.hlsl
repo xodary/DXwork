@@ -249,10 +249,10 @@ float4 PSTerrain(VS_TERRAIN_OUTPUT input) : SV_TARGET
     float4 cDetailTexColor = gtxtTerrainDetailTexture.Sample(gSamplerState, input.uv1);
     //float4 cColor = input.color * cBaseTexColor;
     float4 cColor = cBaseTexColor * 0.5f + cDetailTexColor * 0.5f;
-	if ((150.0f < input.positionW.y) && (input.positionW.y < 155.5f))
-	{
-		cColor.rgb += gtxtTerrainWaterTexture.Sample(gSamplerState, float2(input.uv0.x * 50.0f, (input.positionW.y - 155.0f) / 3.0f + 0.65f)).rgb * (1.0f - (input.positionW.y - 155.0f) / 5.5f);
-	}
+	//if ((150.0f < input.positionW.y) && (input.positionW.y < 155.5f))
+	//{
+	//	cColor.rgb += gtxtTerrainWaterTexture.Sample(gSamplerState, float2(input.uv0.x * 50.0f, (input.positionW.y - 155.0f) / 3.0f + 0.65f)).rgb * (1.0f - (input.positionW.y - 155.0f) / 5.5f);
+	//}
 	return(cColor);
 }
 
@@ -643,10 +643,6 @@ float4 PSCubeMapping(VS_LIGHTING_OUTPUT input) : SV_Target
 VS_LIGHTING_OUTPUT VSMapping(VS_LIGHTING_INPUT input)
 {
     VS_LIGHTING_OUTPUT output;
-
-    // output.positionW = mul(float4(input.position, 1.0f), gmtxGameObject).xyz;
-    // output.normalW = mul(float4(input.normal, 0.0f), gmtxGameObject).xyz;
-    // output.position = mul(mul(float4(output.positionW, 1.0f), gmtxView), gmtxProjection);
     
    output.position = mul(mul(mul(float4(input.position, 1.0f), gmtxGameObject), gmtxView), gmtxProjection);
    output.positionW = input.position;
@@ -656,13 +652,8 @@ VS_LIGHTING_OUTPUT VSMapping(VS_LIGHTING_INPUT input)
 
 float4 PSMapping(VS_LIGHTING_OUTPUT input) : SV_Target
 {
-   // input.normalW = normalize(input.normalW);
-   // float3 vFromCamera = normalize(input.positionW - gvCameraPosition.xyz);
-   // float3 vReflected = normalize(reflect(vFromCamera, input.normalW));
-   // float4 cColor = gtxtCubeMap.Sample(gSamplerState, vReflected);
    input.positionW.x = 1.f - input.positionW.x;
-   //input.positionW.z = 1.f - input.positionW.z;
-   float4 cColor = gtxtSkyCubeTexture.Sample(gSamplerState, input.positionW);
+    float4 cColor = gtxtCubeMap.Sample(gssClamp, input.positionW);
 
     return (cColor);
 

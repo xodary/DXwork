@@ -100,11 +100,15 @@ private:
 	CPlayer						*m_pPlayer = NULL;
 	CCamera						*m_pCamera = NULL;
 
+	LPVOID						temp1;
+	LPVOID						temp2;
+
 	UILayer						*m_pUILayer = NULL;
 
 	POINT						m_ptOldCursorPos;
 
 	_TCHAR						m_pszFrameRate[50];
+	_TCHAR						m_killed[50];
 
 	bool						m_bRenderBoundingBox = false;
 

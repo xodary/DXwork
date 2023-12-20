@@ -33,6 +33,7 @@ CGameFramework::CGameFramework()
 
 
 	_tcscpy_s(m_pszFrameRate, _T("LabProject ("));
+	_tcscpy_s(m_killed, _T("죽인 적의 수: "));
 }
 
 CGameFramework::~CGameFramework()
@@ -376,7 +377,9 @@ void CGameFramework::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPA
 		case 'l':
 			::gbTerrainTessellationWireframe = !::gbTerrainTessellationWireframe;
 			break;
-
+		case 'z':
+		case 'Z':
+			break;
 		default:
 			break;
 		}
@@ -468,16 +471,16 @@ void CGameFramework::BuildObjects()
 	m_pUILayer = new UILayer(m_nSwapChainBuffers, 2, m_pd3dDevice, m_pd3dCommandQueue, m_ppd3dSwapChainBackBuffers, m_nWndClientWidth, m_nWndClientHeight);
 
 	ID2D1SolidColorBrush* pd2dBrush = m_pUILayer->CreateBrush(D2D1::ColorF(D2D1::ColorF::Purple, 1.0f));
-	IDWriteTextFormat* pdwTextFormat = m_pUILayer->CreateTextFormat(L"궁서체", m_nWndClientHeight / 15.0f);
+	IDWriteTextFormat* pdwTextFormat = m_pUILayer->CreateTextFormat(L"궁서체", m_nWndClientHeight / 10.0f + 10);
 	D2D1_RECT_F d2dRect = D2D1::RectF(0.0f, 0.0f, (float)m_nWndClientWidth, (float)m_nWndClientHeight);
 
 	WCHAR pstrOutputText[256];
-	wcscpy_s(pstrOutputText, 256, L"한글 테스트 궁서체\n");
-	m_pUILayer->UpdateTextOutputs(0, pstrOutputText, &d2dRect, pdwTextFormat, pd2dBrush);
+	//wcscpy_s(pstrOutputText, 256, L"한글 테스트 궁서체\n");
+	//m_pUILayer->UpdateTextOutputs(0, pstrOutputText, &d2dRect, pdwTextFormat, pd2dBrush);
 
 	pd2dBrush = m_pUILayer->CreateBrush(D2D1::ColorF(D2D1::ColorF::BlueViolet, 1.0f));
-	pdwTextFormat = m_pUILayer->CreateTextFormat(L"Arial", m_nWndClientHeight / 25.0f);
-	d2dRect = D2D1::RectF(0.0f, m_nWndClientHeight - 75.0f, (float)m_nWndClientWidth, (float)m_nWndClientHeight);
+	pdwTextFormat = m_pUILayer->CreateTextFormat(L"Arial", m_nWndClientHeight / 25.0f + 10);
+	d2dRect = D2D1::RectF(0.0f, m_nWndClientHeight - 100.0f, (float)m_nWndClientWidth, (float)m_nWndClientHeight);
 
 	m_pUILayer->UpdateTextOutputs(1, NULL, &d2dRect, pdwTextFormat, pd2dBrush);
 
@@ -589,15 +592,36 @@ void CGameFramework::AnimateObjects()
 
 	if (m_pScene->CheckSceneCollisions(m_pPlayer))
 	{
-		//std::cout << "충돌발생" << std::endl;
 		XMFLOAT3 prePos = m_pPlayer->m_xmf3BeforeCollidedPosition;
-		//printf("이전 위치로 돌아감: (%f, %f, %f)\n", prePos.x, prePos.y, prePos.z);
 		m_pPlayer->SetPosition(prePos, false);
+		return;
 	}
 
 	if (m_pScene->CheckEnvironmentMapCollision())
 	{
+		m_pScene->inMirror = true;
+		temp1 = m_pPlayer->m_pPlayerUpdatedContext;
+		temp2 = m_pPlayer->m_pCameraUpdatedContext;
+		m_pPlayer->m_pPlayerUpdatedContext = NULL;
+		m_pPlayer->m_pCameraUpdatedContext = NULL;
+		m_pPlayer->m_xmf4x4World = Matrix4x4::Identity();
+		m_pPlayer->SetPosition(XMFLOAT3(0, -5400, 0));
+		m_pPlayer->SetGravity(XMFLOAT3(0, 0, 0));
+		m_pPlayer->m_xmf3Right = XMFLOAT3(1, 0, 0);
+		m_pPlayer->m_xmf3Up = XMFLOAT3(0, 1, 0);
+		m_pPlayer->m_xmf3Look = XMFLOAT3(0, 0, 1);
 		std::cout << "새로운 곳으로 이동합니다." << std::endl;
+		return;
+	}
+
+	if (m_pScene->CheckInMirrorCollision())
+	{
+		m_pScene->inMirror = false;
+		m_pPlayer->m_pPlayerUpdatedContext = temp1;
+		m_pPlayer->m_pCameraUpdatedContext = temp2;
+		m_pPlayer->SetPosition(XMFLOAT3(m_pScene->m_pTerrain->GetWidth() * 0.5f, 400.0f, m_pScene->m_pTerrain->GetLength() * 0.5f), false);
+		m_pPlayer->SetGravity(XMFLOAT3(0.0f, -250.0f, 0.0f));
+		return;
 	}
 }
 
@@ -657,7 +681,11 @@ void CGameFramework::MoveToNextFrame()
 
 void CGameFramework::UpdateUI()
 {
-	m_pUILayer->UpdateTextOutputs(1, m_pszFrameRate, NULL, NULL, NULL);
+	//m_pUILayer->UpdateTextOutputs(1, m_pszFrameRate, NULL, NULL, NULL);
+	int killed = ((CTankPlayer*)m_pPlayer)->m_killedEnermy;		
+	unsigned int a{};
+	_itow_s(killed, m_killed, sizeof(m_killed), sizeof(int));
+	m_pUILayer->UpdateTextOutputs(1, m_killed, NULL, NULL, NULL);
 }
 
 void CGameFramework::FrameAdvance()
@@ -704,7 +732,7 @@ void CGameFramework::FrameAdvance()
 
 	::WaitForGpuComplete(m_pd3dCommandQueue, m_pd3dFence, ++m_nFenceValues[m_nSwapChainBufferIndex], m_hFenceEvent);
 
-	// m_pUILayer->Render(m_nSwapChainBufferIndex);
+	m_pUILayer->Render(m_nSwapChainBufferIndex);
 
 #ifdef _WITH_SYNCH_SWAPCHAIN
 	m_pdxgiSwapChain->Present(1, 0);

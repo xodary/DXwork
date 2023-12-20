@@ -930,7 +930,7 @@ CSkyBox::CSkyBox(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dComman
 {
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 
-	CSkyBoxMesh* pSkyBoxMesh = new CSkyBoxMesh(pd3dDevice, pd3dCommandList, 2000.0f, 2000.0f, 2000.0f);
+	CSkyBoxMesh* pSkyBoxMesh = new CSkyBoxMesh(pd3dDevice, pd3dCommandList, 3000.0f, 3000.0f, 3000.0f);
 	SetMesh(0, pSkyBoxMesh);
 
 	CTexture* pSkyBoxTexture = new CTexture(1, RESOURCE_TEXTURE_CUBE, 0, 1);
@@ -1138,7 +1138,7 @@ void CTankObject::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent, CPlayer
 	XMVECTOR vTerrainNormal = XMLoadFloat3(&terrainNormal);
 	XMFLOAT3 xmf3Up = GetUp();
 	XMVECTOR vTankNormal = XMLoadFloat3(&xmf3Up);
-	XMVECTOR lerpedVector = XMVectorLerp(vTerrainNormal, vTankNormal, fTimeElapsed * 40);
+	XMVECTOR lerpedVector = XMVectorLerp(vTerrainNormal, vTankNormal, min(0.7, fTimeElapsed * 40));
 
 	XMStoreFloat3(&xmf3Up, lerpedVector);
 	XMFLOAT3 xmf3Right = GetRight();
@@ -1251,7 +1251,7 @@ void CGrassObject::Animate(float fTimeElapsed)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 
-CDynamicCubeMappingObject::CDynamicCubeMappingObject(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, LONG nCubeMapSize, D3D12_CPU_DESCRIPTOR_HANDLE d3dDsvCPUDescriptorHandle, D3D12_CPU_DESCRIPTOR_HANDLE d3dRtvCPUDescriptorHandle, CShader* pShader)
+CDynamicCubeMappingObject::CDynamicCubeMappingObject(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, LONG nCubeMapSize, UINT nBoxSize, D3D12_CPU_DESCRIPTOR_HANDLE d3dDsvCPUDescriptorHandle, D3D12_CPU_DESCRIPTOR_HANDLE d3dRtvCPUDescriptorHandle, CShader* pShader)
 {
 	m_nMeshes = 1;
 	m_ppBoundingBoxMeshes = new CBoundingBoxMesh * [m_nMeshes];
@@ -1351,8 +1351,8 @@ void CDynamicCubeMappingObject::OnPreRender(ID3D12GraphicsCommandList* pd3dComma
 		pd3dCommandList->OMSetRenderTargets(1, &m_pd3dRtvCPUDescriptorHandles[j], TRUE, &m_d3dDsvCPUDescriptorHandle);
 
 		pScene->Render(pd3dCommandList, m_ppCameras[j]);
-		pScene->m_pPlayer->m_pShader->Render(pd3dCommandList, m_ppCameras[j]);
-		pScene->m_pPlayer->CGameObject::Render(pd3dCommandList, m_ppCameras[j]);
+		//pScene->m_pPlayer->m_pShader->Render(pd3dCommandList, m_ppCameras[j]);
+		//pScene->m_pPlayer->CGameObject::Render(pd3dCommandList, m_ppCameras[j]);
 	}
 	::SynchronizeResourceTransition(pd3dCommandList, m_ppMaterials[0]->m_pTexture->GetResource(0), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ);
 }
@@ -1368,9 +1368,10 @@ void CDynamicCubeMappingObject::UpdateBoundingBox()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 
-CSkyboxMappingObject::CSkyboxMappingObject(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, LONG nCubeMapSize, D3D12_CPU_DESCRIPTOR_HANDLE d3dDsvCPUDescriptorHandle, D3D12_CPU_DESCRIPTOR_HANDLE d3dRtvCPUDescriptorHandle, CShader* pShader)
+CSkyboxMappingObject::CSkyboxMappingObject(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, LONG nCubeMapSize, UINT nBoxSize, D3D12_CPU_DESCRIPTOR_HANDLE d3dDsvCPUDescriptorHandle, D3D12_CPU_DESCRIPTOR_HANDLE d3dRtvCPUDescriptorHandle, CShader* pShader)
 {
 	m_nCubeMapSize = nCubeMapSize;
+	m_nBoxSize = nBoxSize;
 	m_nMeshes = 1;
 	m_ppBoundingBoxMeshes = new CBoundingBoxMesh * [m_nMeshes];
 	m_xmBoundingSpheres = new BoundingSphere[m_nMeshes];
@@ -1383,7 +1384,7 @@ CSkyboxMappingObject::CSkyboxMappingObject(ID3D12Device* pd3dDevice, ID3D12Graph
 		m_ppCameras[j]->SetScissorRect(0, 0, nCubeMapSize, nCubeMapSize);
 		m_ppCameras[j]->CreateShaderVariables(pd3dDevice, pd3dCommandList);
 		//m_ppCameras[j]->GenerateProjectionMatrix(0.1f, 5000.0f, 1.0f/*Aspect Ratio*/, 90.0f/*FOV*/);
-		m_ppCameras[j]->GenerateOrthoProjectionMatrix(m_nCubeMapSize, m_nCubeMapSize, 0.0f, m_nCubeMapSize);
+		m_ppCameras[j]->GenerateOrthoProjectionMatrix(m_nBoxSize, m_nBoxSize, 0.0f, m_nBoxSize);
 	}
 
 	//Depth Buffer & View
@@ -1447,9 +1448,9 @@ void CSkyboxMappingObject::OnPreRender(ID3D12GraphicsCommandList* pd3dCommandLis
 	pScene->OnPrepareRender(pd3dCommandList);
 
 	static XMFLOAT3 pxmf3LookAts[6] = {
-		XMFLOAT3(m_nCubeMapSize/2, 0.0f, 0.0f), XMFLOAT3(-m_nCubeMapSize / 2, 0.0f, 0.0f),
-		XMFLOAT3(0.0f, -m_nCubeMapSize / 2, 0.0f), XMFLOAT3(0.0f, m_nCubeMapSize / 2, 0.0f),
-		XMFLOAT3(0.0f, 0.0f, -m_nCubeMapSize / 2), XMFLOAT3(0.0f, 0.0f, m_nCubeMapSize / 2) };
+		XMFLOAT3(m_nBoxSize / 2, 0.0f, 0.0f), XMFLOAT3(-m_nBoxSize / 2, 0.0f, 0.0f),
+		XMFLOAT3(0.0f, -m_nBoxSize / 2, 0.0f), XMFLOAT3(0.0f, m_nBoxSize / 2, 0.0f),
+		XMFLOAT3(0.0f, 0.0f, -m_nBoxSize / 2), XMFLOAT3(0.0f, 0.0f, m_nBoxSize / 2) };
 	static XMFLOAT3 pxmf3Ups[6] = {
 		XMFLOAT3(0.0f, +1.0f, 0.0f), XMFLOAT3(0.0f, +1.0f, 0.0f), 
 		XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f), 
@@ -1461,10 +1462,7 @@ void CSkyboxMappingObject::OnPreRender(ID3D12GraphicsCommandList* pd3dCommandLis
 	XMFLOAT3 xmf3Position = GetPosition();
 	for (int j = 0; j < 6; j++)
 	{
-		// m_ppCameras[j]->SetPosition(xmf3Position);
-		// m_ppCameras[j]->GenerateViewMatrix(xmf3Position, Vector3::Add(xmf3Position, pxmf3LookAts[j]), pxmf3Ups[j]);
-		
-		// m_ppCameras[j]->SetPosition(xmf3Position);
+		m_ppCameras[j]->SetPosition(xmf3Position);
 		m_ppCameras[j]->GenerateViewMatrix(
 			Vector3::Subtract(xmf3Position, pxmf3LookAts[j]),
 			Vector3::Add(xmf3Position, pxmf3LookAts[j]), pxmf3Ups[j]);

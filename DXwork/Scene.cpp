@@ -27,54 +27,50 @@ void CScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* p
 	XMFLOAT3 xmf3Scale = XMFLOAT3(8.0f, 2.0f, 8.0f);
 	XMFLOAT4 xmf4Color(0.0f, 0.5f, 0.0f, 0.0f);
 
-	// m_pTerrain = new CHeightMapTerrain(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, _T("Image/HeightMap.raw"), 257, 257, 13, 13, xmf3Scale, xmf4Color);
+	m_pTerrain = new CHeightMapTerrain(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, _T("Image/HeightMap.raw"), 257, 257, 13, 13, xmf3Scale, xmf4Color);
 	
-	m_pCubeMapSkyboxShader = new CCubeMapSkyboxShader();
+	m_pCubeMapSkyboxShader = new CCubeMapSkyboxShader(2048,256);
 	m_pCubeMapSkyboxShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
-	m_pCubeMapSkyboxShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pTerrain);
+	m_pCubeMapSkyboxShader->BuildObjects(pd3dDevice, pd3dCommandList);
 
-	//m_pTerrainWater = new CRippleWater(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, 257, 257, 17, 17, xmf3Scale, xmf4Color);
-	//m_pTerrainWater->SetPosition(+(257 * 0.5f), 155.0f, +(257 * 0.5f));
+	// m_pTerrainWater = new CRippleWater(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, 257, 257, 17, 17, xmf3Scale, xmf4Color);
+	// m_pTerrainWater->SetPosition(+(257 * 0.5f), 155.0f, +(257 * 0.5f));
 
-	m_nShaders = 0;
+	m_nShaders = 4;
 	m_ppShaders = new CShader * [m_nShaders];
+	
+	CBulletShader* pBulletsShader = new CBulletShader();
+	pBulletsShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
+	pBulletsShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, this, m_pTerrain);
+	m_ppShaders[0] = pBulletsShader;
+	
+	CEnermyShader* pEnermyShader = new CEnermyShader();
+	pEnermyShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
+	pEnermyShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, this, m_pTerrain);
+	m_ppShaders[1] = pEnermyShader;
+	pEnermyShader->m_pBulletShader = pBulletsShader;
+	
+	CTreeShader* pTreeShader = new CTreeShader();
+	pTreeShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
+	pTreeShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, this, m_pTerrain);
+	m_ppShaders[2] = pTreeShader;
+	AddCollisionObject(pTreeShader, m_ppCollisionObjects, m_nCollisionObject);
+	
+	CBillboardObjectsShader* pBillboardObjectShader = new CBillboardObjectsShader();
+	pBillboardObjectShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
+	pBillboardObjectShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pTerrain);
+	m_ppShaders[3] = pBillboardObjectShader;
 
-	// CBulletShader* pBulletsShader = new CBulletShader();
-	// pBulletsShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
-	// pBulletsShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, this, m_pTerrain);
-	// m_ppShaders[0] = pBulletsShader;
-	// 
-	// CEnermyShader* pEnermyShader = new CEnermyShader();
-	// pEnermyShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
-	// pEnermyShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, this, m_pTerrain);
-	// m_ppShaders[1] = pEnermyShader;
-	// pEnermyShader->m_pBulletShader = pBulletsShader;
-	// AddCollisionObject(pEnermyShader, m_ppCollisionObjects, m_nCollisionObject);
-	// 
-	// CTreeShader* pTreeShader = new CTreeShader();
-	// pTreeShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
-	// pTreeShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, this, m_pTerrain);
-	// m_ppShaders[2] = pTreeShader;
-	// AddCollisionObject(pTreeShader, m_ppCollisionObjects, m_nCollisionObject);
-	// 
-	// CBillboardObjectsShader* pBillboardObjectShader = new CBillboardObjectsShader();
-	// pBillboardObjectShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
-	// pBillboardObjectShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pTerrain);
-	// m_ppShaders[3] = pBillboardObjectShader;
+	m_nEnvironmentMappingShaders = 1;
+	m_ppEnvironmentMappingShaders = new CDynamicCubeMappingShader * [m_nEnvironmentMappingShaders];
+	
+	m_ppEnvironmentMappingShaders[0] = new CDynamicCubeMappingShader(256);
+	m_ppEnvironmentMappingShaders[0]->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
+	m_ppEnvironmentMappingShaders[0]->BuildObjects(pd3dDevice, pd3dCommandList, m_pTerrain);
 
-	// m_nEnvironmentMappingShaders = 1;
-	// m_ppEnvironmentMappingShaders = new CDynamicCubeMappingShader * [m_nEnvironmentMappingShaders];
-	// 
-	// m_ppEnvironmentMappingShaders[0] = new CDynamicCubeMappingShader(256);
-	// m_ppEnvironmentMappingShaders[0]->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
-	// m_ppEnvironmentMappingShaders[0]->BuildObjects(pd3dDevice, pd3dCommandList, m_pTerrain);
-	// 
-	// AddCollisionObject(m_ppEnvironmentMappingShaders[0], m_ppEnvironmentMapObjects, m_nEnvironmentMapObjects);
-
-	// CMirrorShader* pMirrorShader = new CMirrorShader(this);
-	// pMirrorShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
-	// pMirrorShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pTerrain);
-	// m_ppShaders[4] = pMirrorShader;
+	m_nEnvironmentMapObjects = 1;
+	m_ppEnvironmentMapObjects = new CGameObject * [m_nEnvironmentMapObjects];
+	m_ppEnvironmentMapObjects[0] = m_ppEnvironmentMappingShaders[0]->m_ppObjects[0];
 }
 
 void CScene::AddCollisionObject(CShader* pShader, CGameObject**& ppObject, int& nObject)
@@ -252,14 +248,17 @@ void CScene::OnPreRender(ID3D12Device* pd3dDevice, ID3D12CommandQueue* pd3dComma
 {
 	for (int i = 0; i < m_nEnvironmentMappingShaders; i++)
 	{
-		m_ppEnvironmentMappingShaders[i]->OnPreRender(pd3dDevice, pd3dCommandQueue, pd3dFence, hFenceEvent, this);
+		if(m_ppEnvironmentMappingShaders[i])
+			m_ppEnvironmentMappingShaders[i]->OnPreRender(pd3dDevice, pd3dCommandQueue, pd3dFence, hFenceEvent, this);
 	}
-	if(m_pCubeMapSkyboxShader)
+	if(m_pCubeMapSkyboxShader && inMirror)
 		m_pCubeMapSkyboxShader->OnPreRender(pd3dDevice, pd3dCommandQueue, pd3dFence, hFenceEvent, this);
 }
 
 void CScene::AnimateObjects(float fTimeElapsed)
 {
+	m_ppShaders[0]->AnimateObjects(fTimeElapsed);
+	if (inMirror) return;
 	if(m_nShaders>1)
 		((CEnermyShader*)m_ppShaders[1])->m_pPlayer = m_pPlayer;
 	for (int i = 0; i < m_nCollisionObject; i++)
@@ -270,7 +269,7 @@ void CScene::AnimateObjects(float fTimeElapsed)
 	{
 		m_ppEnvironmentMapObjects[i]->UpdateBoundingBox();
 	}
-	for (int i = 0; i < m_nShaders; i++)
+	for (int i = 1; i < m_nShaders; i++)
 	{
 		if (m_ppShaders[i])
 		{
@@ -313,13 +312,12 @@ void CScene::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera
 	pCamera->UpdateShaderVariables(pd3dCommandList);
 
 	if (m_pSkyBox) m_pSkyBox->Render(pd3dCommandList, pCamera);
-	if (m_pCubeMapSkyboxShader) m_pCubeMapSkyboxShader->Render(pd3dCommandList, pCamera);
+	if (m_pCubeMapSkyboxShader && inMirror) m_pCubeMapSkyboxShader->Render(pd3dCommandList, pCamera);
 	if (m_pTerrain) m_pTerrain->Render(pd3dCommandList, pCamera);
 	if (m_pTerrainWater) m_pTerrainWater->Render(pd3dCommandList, pCamera);
-
-
-//	for (int i = 0; i < m_nGameObjects; i++) if (m_ppGameObjects[i]) m_ppGameObjects[i]->Render(pd3dCommandList, pCamera);
+	
 	for (int i = 0; i < m_nShaders; i++) if (m_ppShaders[i]) m_ppShaders[i]->Render(pd3dCommandList, pCamera);
+	
 	for (int i = 0; i < m_nEnvironmentMappingShaders; i++) if (m_ppEnvironmentMappingShaders[i]) m_ppEnvironmentMappingShaders[i]->Render(pd3dCommandList, pCamera);
 }
 
@@ -333,12 +331,11 @@ void CScene::RenderBoundingBox(ID3D12GraphicsCommandList* pd3dCommandList, CCame
 			m_ppCollisionObjects[i]->RenderBoundingBox(pd3dCommandList, pCamera);
 		}
 	}
-	for (int i = 0; i < m_nEnvironmentMapObjects; i++)
+	for (int i = 0; i < ((CEnermyShader*)m_ppShaders[1])->m_nBullets; ++i)
 	{
-		if (m_ppEnvironmentMapObjects[i])
-		{
-			m_ppEnvironmentMapObjects[i]->RenderBoundingBox(pd3dCommandList, pCamera);
-		}
+		isCollided = false;
+		if (((CEnermyShader*)m_ppShaders[1])->m_ppBullets[i] == NULL) continue;
+		((CEnermyShader*)m_ppShaders[1])->m_ppBullets[i]->RenderBoundingBox(pd3dCommandList, pCamera);
 	}
 
 	m_pPlayer->RenderBoundingBox(pd3dCommandList, pCamera);
@@ -365,8 +362,9 @@ void CScene::ReleaseShaderVariables()
 		m_pd3dcbAnimation->Release();
 	}
 
-	if (m_pTerrain) m_pTerrain->ReleaseShaderVariables();
 	if (m_pSkyBox) m_pSkyBox->ReleaseShaderVariables();
+	if (m_pTerrain) m_pTerrain->ReleaseShaderVariables();
+	if (m_pCubeMapSkyboxShader) m_pCubeMapSkyboxShader->ReleaseShaderVariables();
 	if (m_pTerrainWater) m_pTerrainWater->ReleaseShaderVariables();
 
 	for (int i = 0; i < m_nShaders; i++) if (m_ppShaders[i]) m_ppShaders[i]->ReleaseShaderVariables();
@@ -398,9 +396,10 @@ void CScene::ReleaseObjects()
 		delete[] m_ppEnvironmentMappingShaders;
 	}
 
-	if (m_pTerrain) delete m_pTerrain;
-	if (m_pTerrainWater) delete m_pTerrainWater;
 	if (m_pSkyBox) delete m_pSkyBox;
+	if (m_pTerrain) delete m_pTerrain;
+	if (m_pCubeMapSkyboxShader) delete m_pCubeMapSkyboxShader;
+	if (m_pTerrainWater) delete m_pTerrainWater;
 
 	ReleaseShaderVariables();
 }
@@ -410,21 +409,33 @@ void CScene::ReleaseUploadBuffers()
 	for (int i = 0; i < m_nShaders; i++) m_ppShaders[i]->ReleaseUploadBuffers();
 	for (int i = 0; i < m_nEnvironmentMappingShaders; i++) m_ppEnvironmentMappingShaders[i]->ReleaseUploadBuffers();
 
+	if (m_pSkyBox) m_pSkyBox->ReleaseUploadBuffers();
 	if (m_pTerrain) m_pTerrain->ReleaseUploadBuffers();
 	if (m_pTerrainWater) m_pTerrainWater->ReleaseUploadBuffers();
-	if (m_pSkyBox) m_pSkyBox->ReleaseUploadBuffers();
+	if (m_pCubeMapSkyboxShader) m_pCubeMapSkyboxShader->ReleaseUploadBuffers();
 
 	// for (int i = 0; i < m_nObjects; i++) m_ppObjects[i]->ReleaseUploadBuffers();
 }
 
 bool CScene::CheckSceneCollisions(CGameObject* pTargetGameObject)
 {
+	if (inMirror) return false;
 	for (int i = 0; i < m_nCollisionObject; i++)
 	{
 		isCollided = false;
 		if (CheckObjectByObjectCollisions(m_ppCollisionObjects[i], pTargetGameObject))
 		{
-			//std::cout << "面倒惯积 CScene::CheckSceneCollisions" << std::endl;
+			std::cout << "面倒惯积 CScene::CheckSceneCollisions" << std::endl;
+			return true;
+		}
+	}
+	for (int i = 0; i < ((CEnermyShader*)m_ppShaders[1])->m_nBullets; ++i)
+	{
+		isCollided = false;
+		if (((CEnermyShader*)m_ppShaders[1])->m_ppBullets[i] == NULL) continue;
+ 		if (CheckObjectByObjectCollisions(((CEnermyShader*)m_ppShaders[1])->m_ppBullets[i], pTargetGameObject))
+		{
+			std::cout << "面倒惯积 CScene::CheckSceneCollisions" << std::endl;
 			return true;
 		}
 	}
@@ -433,14 +444,13 @@ bool CScene::CheckSceneCollisions(CGameObject* pTargetGameObject)
 
 bool CScene::CheckEnvironmentMapCollision()
 {
+	if (inMirror) return false;
 	if (m_nEnvironmentMappingShaders < 1) return false;
-	CGameObject** ppObjects = m_ppEnvironmentMappingShaders[0]->m_ppObjects;
-	int nObjects = m_ppEnvironmentMappingShaders[0]->m_nObject;
-	for (int i = 0; i < nObjects; i++)
+	for (int i = 0; i < m_nEnvironmentMapObjects; i++)
 	{
-		if (CheckObjectByObjectCollisions(ppObjects[i], m_pPlayer, true))
+		if (CheckObjectByObjectCollisions(m_ppEnvironmentMapObjects[i], m_pPlayer, true))
 		{
-			// std::cout << "面倒惯积 CScene::CheckEnvironmentMapCollision" << std::endl;
+			std::cout << "面倒惯积 CScene::CheckEnvironmentMapCollision" << std::endl;
 			return true;
 		}
 	}
@@ -455,7 +465,7 @@ bool CScene::CheckObjectByObjectCollisions(CGameObject* pObjectA, CGameObject* p
 			for (int q = 0; q < pObjectB->m_nMeshes; ++q) {
 				if (pObjectA->m_xmBoundingSpheres[p].Intersects(pObjectB->m_pxmBoundingBoxes[q]))
 				{
-					std::cout << "面倒惯积 CScene::CheckObjectByObjectCollisions" << std::endl;
+					std::cout << "面倒惯积 CScene::CheckObjectByObjectCollisions isAsphere" << std::endl;
 					isCollided = true;
 					return isCollided;
 				}
@@ -468,7 +478,8 @@ bool CScene::CheckObjectByObjectCollisions(CGameObject* pObjectA, CGameObject* p
 			for (int q = 0; q < pObjectB->m_nMeshes; ++q) {
 				if (pObjectA->m_pxmBoundingBoxes[p].Intersects(pObjectB->m_pxmBoundingBoxes[q]))
 				{
-					//std::cout << "面倒惯积 CScene::CheckObjectByObjectCollisions" << std::endl;
+					std::cout << "面倒惯积 CScene::CheckObjectByObjectCollisions Asphere" << std::endl;
+					std::cout << pObjectA->m_pstrFrameName << " & " << pObjectB->m_pstrFrameName << std::endl;
 					isCollided = true;
 					return isCollided;
 				}
@@ -482,3 +493,19 @@ bool CScene::CheckObjectByObjectCollisions(CGameObject* pObjectA, CGameObject* p
 	return(isCollided);
 }
 
+bool CScene::CheckInMirrorCollision()
+{
+	if (!inMirror) return false;
+	XMFLOAT3 MirroPos = m_pCubeMapSkyboxShader->m_ppObjects[0]->GetPosition();
+	float boxsize = m_pCubeMapSkyboxShader->m_nBoxSize / 2;
+	XMFLOAT3 playerPos = m_pPlayer->GetPosition();
+	if (playerPos.z < MirroPos.z - boxsize || playerPos.z > MirroPos.z + boxsize)
+	{
+		return true;
+	}
+	if (playerPos.x < MirroPos.x - boxsize || playerPos.x > MirroPos.x + boxsize)
+	{
+		return true;
+	}
+	return false;
+}
