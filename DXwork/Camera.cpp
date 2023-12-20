@@ -96,6 +96,11 @@ void CCamera::GenerateProjectionMatrix(float fNearPlaneDistance, float fFarPlane
 	m_xmf4x4Projection = Matrix4x4::PerspectiveFovLH(XMConvertToRadians(fFOVAngle), fAspectRatio, fNearPlaneDistance, fFarPlaneDistance);
 }
 
+void CCamera::GenerateOrthoProjectionMatrix(float width, float height, float fNearPlaneDistance, float fFarPlaneDistance)
+{
+	m_xmf4x4Projection = Matrix4x4::OrthoMatrix(width, height, fNearPlaneDistance, fFarPlaneDistance);
+}
+
 void CCamera::SetViewport(int xTopLeft, int yTopLeft, int nWidth, int nHeight, float fMinZ, float fMaxZ)
 {
 	m_d3dViewport.TopLeftX = float(xTopLeft);

@@ -39,6 +39,7 @@ public:
 
 	CPlayer						*m_pPlayer = NULL;
 	CSkyBox						*m_pSkyBox = NULL;
+	CCubeMapSkyboxShader		*m_pCubeMapSkyboxShader = NULL;
 	CHeightMapTerrain			*m_pTerrain = NULL;
 
 	CDynamicCubeMappingShader	**m_ppEnvironmentMappingShaders = NULL;

@@ -80,6 +80,7 @@ public:
 	XMFLOAT3& GetOffset() { return(m_xmf3Offset); }
 
 	void GenerateProjectionMatrix(float fNearPlaneDistance, float fFarPlaneDistance, float fAspectRatio, float fFOVAngle);
+	void GenerateOrthoProjectionMatrix(float width, float height, float fNearPlaneDistance, float fFarPlaneDistance);
 
 	void SetViewport(int xTopLeft, int yTopLeft, int nWidth, int nHeight, float fMinZ, float fMaxZ);
 	void SetScissorRect(LONG xLeft, LONG yTop, LONG xRight, LONG yBottom);

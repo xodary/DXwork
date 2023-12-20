@@ -627,7 +627,7 @@ float4 PSCubeMapping(VS_LIGHTING_OUTPUT input) : SV_Target
     input.normalW = normalize(input.normalW);
 
     // float4 cIllumination = Lighting(input.positionW, input.normalW);
-
+     
     float3 vFromCamera = normalize(input.positionW - gvCameraPosition.xyz);
     float3 vReflected = normalize(reflect(vFromCamera, input.normalW));
     float4 cCubeTextureColor = gtxtCubeMap.Sample(gSamplerState, vReflected);
@@ -640,3 +640,31 @@ float4 PSCubeMapping(VS_LIGHTING_OUTPUT input) : SV_Target
 
 }
 
+VS_LIGHTING_OUTPUT VSMapping(VS_LIGHTING_INPUT input)
+{
+    VS_LIGHTING_OUTPUT output;
+
+    // output.positionW = mul(float4(input.position, 1.0f), gmtxGameObject).xyz;
+    // output.normalW = mul(float4(input.normal, 0.0f), gmtxGameObject).xyz;
+    // output.position = mul(mul(float4(output.positionW, 1.0f), gmtxView), gmtxProjection);
+    
+   output.position = mul(mul(mul(float4(input.position, 1.0f), gmtxGameObject), gmtxView), gmtxProjection);
+   output.positionW = input.position;
+
+    return (output);
+}
+
+float4 PSMapping(VS_LIGHTING_OUTPUT input) : SV_Target
+{
+   // input.normalW = normalize(input.normalW);
+   // float3 vFromCamera = normalize(input.positionW - gvCameraPosition.xyz);
+   // float3 vReflected = normalize(reflect(vFromCamera, input.normalW));
+   // float4 cColor = gtxtCubeMap.Sample(gSamplerState, vReflected);
+   input.positionW.x = 1.f - input.positionW.x;
+   input.positionW.z = 1.f - input.positionW.z;
+   float4 cColor = gtxtSkyCubeTexture.Sample(gSamplerState, input.positionW);
+
+    return (cColor);
+
+
+}

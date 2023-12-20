@@ -345,3 +345,10 @@ public:
 	CSphereMeshIlluminated(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, float fRadius = 2.0f, UINT nSlices = 20, UINT nStacks = 20);
 	virtual ~CSphereMeshIlluminated();
 };
+
+class CBoxMeshIlluminated : public CMeshIlluminated
+{
+public:
+	CBoxMeshIlluminated(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, float fWidth, float fHeight, float fDepth);
+	virtual ~CBoxMeshIlluminated();
+};

@@ -704,7 +704,7 @@ void CGameFramework::FrameAdvance()
 
 	::WaitForGpuComplete(m_pd3dCommandQueue, m_pd3dFence, ++m_nFenceValues[m_nSwapChainBufferIndex], m_hFenceEvent);
 
-	m_pUILayer->Render(m_nSwapChainBufferIndex);
+	// m_pUILayer->Render(m_nSwapChainBufferIndex);
 
 #ifdef _WITH_SYNCH_SWAPCHAIN
 	m_pdxgiSwapChain->Present(1, 0);

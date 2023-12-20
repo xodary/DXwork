@@ -701,7 +701,7 @@ D3D12_DEPTH_STENCIL_DESC CBoundingBoxShader::CreateDepthStencilState()
 	return(d3dDepthStencilDesc);
 }
 
-void CBoundingBoxShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, D3D12_PRIMITIVE_TOPOLOGY_TYPE d3dPrimitiveTopologyType)
+void CBoundingBoxShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature* pd3dGraphicsRootSignature, D3D12_PRIMITIVE_TOPOLOGY_TYPE d3dPrimitiveTopologyType)
 {
 	m_nPipelineStates = 1;
 	m_ppd3dPipelineStates = new ID3D12PipelineState * [m_nPipelineStates];
@@ -1570,6 +1570,26 @@ D3D12_INPUT_LAYOUT_DESC CDynamicCubeMappingShader::CreateInputLayout()
 	return(d3dInputLayoutDesc);
 }
 
+D3D12_RASTERIZER_DESC CDynamicCubeMappingShader::CreateRasterizerState()
+{
+	D3D12_RASTERIZER_DESC d3dRasterizerDesc;
+	::ZeroMemory(&d3dRasterizerDesc, sizeof(D3D12_RASTERIZER_DESC));
+	d3dRasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
+	d3dRasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
+	d3dRasterizerDesc.FrontCounterClockwise = FALSE;
+	d3dRasterizerDesc.DepthBias = 0;
+	d3dRasterizerDesc.DepthBiasClamp = 0.0f;
+	d3dRasterizerDesc.SlopeScaledDepthBias = 0.0f;
+	d3dRasterizerDesc.DepthClipEnable = TRUE;
+	d3dRasterizerDesc.MultisampleEnable = FALSE;
+	d3dRasterizerDesc.AntialiasedLineEnable = FALSE;
+	d3dRasterizerDesc.ForcedSampleCount = 0;
+	d3dRasterizerDesc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+
+	return(d3dRasterizerDesc);
+}
+
+
 D3D12_SHADER_BYTECODE CDynamicCubeMappingShader::CreateVertexShader(ID3DBlob** ppd3dShaderBlob)
 {
 	return(CompileShaderFromFile(L"Shaders.hlsl", "VSCubeMapping", "vs_5_1", ppd3dShaderBlob));
@@ -1678,21 +1698,264 @@ void CDynamicCubeMappingShader::Render(ID3D12GraphicsCommandList* pd3dCommandLis
 	}
 }
 
-CDynamicMappingShader::CDynamicMappingShader(UINT nCubeMapSize)
+////////////////////////////////////////////////////////////////////////////////////////////////
+D3D12_RASTERIZER_DESC CMirrorShader::CreateRasterizerState()
+{
+	D3D12_RASTERIZER_DESC d3dRasterizerDesc;
+	::ZeroMemory(&d3dRasterizerDesc, sizeof(D3D12_RASTERIZER_DESC));
+	//	d3dRasterizerDesc.FillMode = D3D12_FILL_MODE_WIREFRAME;
+	d3dRasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
+	d3dRasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
+	d3dRasterizerDesc.FrontCounterClockwise = TRUE;	//
+	d3dRasterizerDesc.DepthBias = 0;
+	d3dRasterizerDesc.DepthBiasClamp = 0.0f;
+	d3dRasterizerDesc.SlopeScaledDepthBias = 0.0f;
+	d3dRasterizerDesc.DepthClipEnable = TRUE;
+	d3dRasterizerDesc.MultisampleEnable = FALSE;
+	d3dRasterizerDesc.AntialiasedLineEnable = FALSE;
+	d3dRasterizerDesc.ForcedSampleCount = 0;
+	d3dRasterizerDesc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+
+	return(d3dRasterizerDesc);
+}
+
+D3D12_DEPTH_STENCIL_DESC CMirrorShader::CreateDepthStencilState()
+{
+	D3D12_DEPTH_STENCIL_DESC d3dDepthStencilDesc;
+	::ZeroMemory(&d3dDepthStencilDesc, sizeof(D3D12_DEPTH_STENCIL_DESC));
+	d3dDepthStencilDesc.DepthEnable = TRUE;
+	d3dDepthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+	d3dDepthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+	d3dDepthStencilDesc.StencilEnable = TRUE;	//
+	d3dDepthStencilDesc.StencilReadMask = d3dDepthStencilDesc.StencilWriteMask = 0xff;	//
+	d3dDepthStencilDesc.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+	d3dDepthStencilDesc.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	d3dDepthStencilDesc.FrontFace.StencilPassOp = D3D12_STENCIL_OP_REPLACE;
+	d3dDepthStencilDesc.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;	//
+	d3dDepthStencilDesc.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+	d3dDepthStencilDesc.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	d3dDepthStencilDesc.BackFace.StencilPassOp = D3D12_STENCIL_OP_REPLACE;
+	d3dDepthStencilDesc.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+
+	return(d3dDepthStencilDesc);
+}
+
+D3D12_BLEND_DESC CMirrorShader::CreateBlendState()
+{
+	D3D12_BLEND_DESC d3dBlendDesc;
+	::ZeroMemory(&d3dBlendDesc, sizeof(D3D12_BLEND_DESC));
+	d3dBlendDesc.AlphaToCoverageEnable = FALSE;
+	d3dBlendDesc.IndependentBlendEnable = FALSE;
+	d3dBlendDesc.RenderTarget[0].BlendEnable = FALSE;
+	d3dBlendDesc.RenderTarget[0].LogicOpEnable = FALSE;
+	d3dBlendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_ONE;
+	d3dBlendDesc.RenderTarget[0].DestBlend = D3D12_BLEND_ZERO;
+	d3dBlendDesc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
+	d3dBlendDesc.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
+	d3dBlendDesc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
+	d3dBlendDesc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
+	d3dBlendDesc.RenderTarget[0].LogicOp = D3D12_LOGIC_OP_NOOP;
+	d3dBlendDesc.RenderTarget[0].RenderTargetWriteMask = 0;
+
+	return(d3dBlendDesc);
+}
+
+CMirrorShader::CMirrorShader(CScene* pScene)
+{
+	m_pScene = pScene;
+}
+
+CMirrorShader::~CMirrorShader()
 {
 }
 
-CDynamicMappingShader::~CDynamicMappingShader()
+void CMirrorShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature* pd3dGraphicsRootSignature)
+{
+	if (pd3dGraphicsRootSignature)
+	{
+		m_pd3dGraphicsRootSignature = pd3dGraphicsRootSignature;
+		pd3dGraphicsRootSignature->AddRef();
+	}
+
+	m_nPipelineStates = 4;
+	m_ppd3dPipelineStates = new ID3D12PipelineState * [m_nPipelineStates];
+
+	ID3DBlob* pd3dVertexShaderBlob = NULL, * pd3dPixelShaderBlob = NULL, * pd3dHullShaderBlob = NULL, * pd3dDomainShaderBlob = NULL;
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC d3dPipelineStateDesc;
+	::ZeroMemory(&d3dPipelineStateDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
+	d3dPipelineStateDesc.pRootSignature = m_pd3dGraphicsRootSignature;
+	d3dPipelineStateDesc.VS = CreateVertexShader(&pd3dVertexShaderBlob);
+	d3dPipelineStateDesc.PS = CreatePixelShader(&pd3dPixelShaderBlob);
+	d3dPipelineStateDesc.HS = CreateHullShader(&pd3dHullShaderBlob);
+	d3dPipelineStateDesc.DS = CreateDomainShader(&pd3dDomainShaderBlob);
+	d3dPipelineStateDesc.RasterizerState = CreateRasterizerState();
+	d3dPipelineStateDesc.BlendState = CreateBlendState();
+	d3dPipelineStateDesc.DepthStencilState = CreateDepthStencilState();
+	d3dPipelineStateDesc.InputLayout = CreateInputLayout();
+	d3dPipelineStateDesc.SampleMask = UINT_MAX;
+	d3dPipelineStateDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+	d3dPipelineStateDesc.NumRenderTargets = 1;
+	d3dPipelineStateDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+	d3dPipelineStateDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	d3dPipelineStateDesc.SampleDesc.Count = 1;
+	d3dPipelineStateDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+	HRESULT hResult = pd3dDevice->CreateGraphicsPipelineState(&d3dPipelineStateDesc, __uuidof(ID3D12PipelineState), (void**)&m_ppd3dPipelineStates[0]);
+
+	d3dPipelineStateDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+	d3dPipelineStateDesc.DepthStencilState.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
+	
+	hResult = pd3dDevice->CreateGraphicsPipelineState(&d3dPipelineStateDesc, __uuidof(ID3D12PipelineState), (void**)&m_ppd3dPipelineStates[1]);
+
+	d3dPipelineStateDesc.BlendState.RenderTarget[0].BlendEnable = TRUE;
+	d3dPipelineStateDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
+	d3dPipelineStateDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+	d3dPipelineStateDesc.BlendState.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
+	d3dPipelineStateDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+	hResult = pd3dDevice->CreateGraphicsPipelineState(&d3dPipelineStateDesc, __uuidof(ID3D12PipelineState), (void**)&m_ppd3dPipelineStates[2]);
+
+	d3dPipelineStateDesc.DepthStencilState.DepthEnable = TRUE;
+	d3dPipelineStateDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+	d3dPipelineStateDesc.DepthStencilState.StencilEnable = FALSE;
+	hResult = pd3dDevice->CreateGraphicsPipelineState(&d3dPipelineStateDesc, __uuidof(ID3D12PipelineState), (void**)&m_ppd3dPipelineStates[3]);
+
+	if (pd3dVertexShaderBlob) pd3dVertexShaderBlob->Release();
+	if (pd3dPixelShaderBlob) pd3dPixelShaderBlob->Release();
+	if (pd3dHullShaderBlob) pd3dHullShaderBlob->Release();
+	if (pd3dDomainShaderBlob) pd3dDomainShaderBlob->Release();
+
+	if (d3dPipelineStateDesc.InputLayout.pInputElementDescs) delete[] d3dPipelineStateDesc.InputLayout.pInputElementDescs;
+}
+
+void CMirrorShader::OnPrepareRender(ID3D12GraphicsCommandList* pd3dCommandList)
+{
+	if (m_pd3dGraphicsRootSignature) pd3dCommandList->SetGraphicsRootSignature(m_pd3dGraphicsRootSignature);
+	if (m_pd3dCbvSrvDescriptorHeap) pd3dCommandList->SetDescriptorHeaps(1, &m_pd3dCbvSrvDescriptorHeap);
+}
+
+void CMirrorShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, void* pContext)
+{
+	m_nObject = 1;
+	m_ppObjects = new CGameObject * [m_nObject];
+
+	D3D12_GPU_DESCRIPTOR_HANDLE d3dCbvGPUDescriptorStartHandle = m_d3dCbvGPUDescriptorStartHandle;
+	D3D12_DESCRIPTOR_HEAP_DESC d3dDescriptorHeapDesc;
+	d3dDescriptorHeapDesc.NumDescriptors = m_nObject;
+	d3dDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+	d3dDescriptorHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	d3dDescriptorHeapDesc.NodeMask = 0;
+	
+	HRESULT hResult = pd3dDevice->CreateDescriptorHeap(&d3dDescriptorHeapDesc, __uuidof(ID3D12DescriptorHeap), (void**)&m_pd3dDsvDescriptorHeap);
+	D3D12_CPU_DESCRIPTOR_HANDLE d3dDsvCPUDescriptorHandle = m_pd3dDsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	//Depth Buffer & View
+	D3D12_CLEAR_VALUE d3dDsbClearValue = { DXGI_FORMAT_D24_UNORM_S8_UINT, { 1.0f, 0 } };
+	ID3D12Resource* m_pd3dDepthStencilBuffer = ::CreateTexture2DResource(pd3dDevice, pd3dCommandList, 256, 256, 1, 1,
+		DXGI_FORMAT_D24_UNORM_S8_UINT, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, D3D12_RESOURCE_STATE_DEPTH_WRITE, &d3dDsbClearValue);
+	pd3dDevice->CreateDepthStencilView(m_pd3dDepthStencilBuffer, NULL, d3dDsvCPUDescriptorHandle);
+
+	CMesh* pTextureRectMesh = new CTexturedRectMesh(pd3dDevice, pd3dCommandList, 256.f, 256.f);
+
+	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
+	XMFLOAT2 xmf2TerrainCenter{};
+	if (pTerrain) {
+		xmf2TerrainCenter = XMFLOAT2(pTerrain->GetWidth() * 0.5f, pTerrain->GetLength() * 0.5f);
+	}
+
+	for (int i = 0; i < m_nObject; i++)
+	{
+		m_ppObjects[i] = new CGameObject();
+		m_ppObjects[i]->SetMesh(0, pTextureRectMesh);
+
+		if (pContext) {
+			float fHeight = pTerrain->GetHeight(xmf2TerrainCenter.x, xmf2TerrainCenter.y + 300);
+			m_ppObjects[i]->SetPosition(xmf2TerrainCenter.x, fHeight + 150.0f, xmf2TerrainCenter.y + 300);
+		}
+		else {
+			m_ppObjects[i]->SetPosition(0, 0, 0);
+		}
+		m_ppObjects[i]->SetCbvGPUDescriptorHandlePtr(d3dCbvGPUDescriptorStartHandle.ptr);
+
+		d3dCbvGPUDescriptorStartHandle.ptr += ::gnCbvSrvDescriptorIncrementSize;
+		d3dDsvCPUDescriptorHandle.ptr += ::gnDsvDescriptorIncrementSize;
+	}
+
+}
+
+void CMirrorShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
+{
+	pd3dCommandList->SetPipelineState(m_ppd3dPipelineStates[3]); // °Å¿ï µÞ¸é ·»´õ¸µ
+	for (int i = 0; i < m_nObject; ++i)
+		m_ppObjects[i]->Render(pd3dCommandList, pCamera);
+	
+	D3D12_CPU_DESCRIPTOR_HANDLE d3dDsvCPUDescriptorHandle = m_pd3dDsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	pd3dCommandList->ClearDepthStencilView(d3dDsvCPUDescriptorHandle, D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+
+	pd3dCommandList->OMSetStencilRef(1);
+	pd3dCommandList->SetPipelineState(m_ppd3dPipelineStates[0]);
+	for (int i = 0; i < m_nObject; ++i)
+		m_ppObjects[i]->Render(pd3dCommandList, pCamera);
+
+	pd3dCommandList->OMSetStencilRef(1);
+	pd3dCommandList->SetPipelineState(m_ppd3dPipelineStates[1]);
+	m_pScene->Render(pd3dCommandList, pCamera);
+
+	pd3dCommandList->OMSetStencilRef(0);
+	pd3dCommandList->SetPipelineState(m_ppd3dPipelineStates[2]);
+	for (int i = 0; i < m_nObject; ++i)
+		m_ppObjects[i]->Render(pd3dCommandList, pCamera);
+}
+
+CCubeMapSkyboxShader::CCubeMapSkyboxShader(UINT nCubeMapSize)
+{
+	m_nCubeMapSize = nCubeMapSize;
+}
+
+CCubeMapSkyboxShader::~CCubeMapSkyboxShader()
 {
 }
 
-void CDynamicMappingShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, void* pContext)
+D3D12_INPUT_LAYOUT_DESC CCubeMapSkyboxShader::CreateInputLayout()
+{
+	UINT nInputElementDescs = 2;
+	D3D12_INPUT_ELEMENT_DESC* pd3dInputElementDescs = new D3D12_INPUT_ELEMENT_DESC[nInputElementDescs];
+
+	pd3dInputElementDescs[0] = { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+	pd3dInputElementDescs[1] = { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+
+	D3D12_INPUT_LAYOUT_DESC d3dInputLayoutDesc;
+	d3dInputLayoutDesc.pInputElementDescs = pd3dInputElementDescs;
+	d3dInputLayoutDesc.NumElements = nInputElementDescs;
+
+	return(d3dInputLayoutDesc);
+}
+
+D3D12_RASTERIZER_DESC CCubeMapSkyboxShader::CreateRasterizerState()
+{
+	D3D12_RASTERIZER_DESC d3dRasterizerDesc;
+	::ZeroMemory(&d3dRasterizerDesc, sizeof(D3D12_RASTERIZER_DESC));
+	d3dRasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
+	d3dRasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
+	d3dRasterizerDesc.FrontCounterClockwise = FALSE;
+	d3dRasterizerDesc.DepthBias = 0;
+	d3dRasterizerDesc.DepthBiasClamp = 0.0f;
+	d3dRasterizerDesc.SlopeScaledDepthBias = 0.0f;
+	d3dRasterizerDesc.DepthClipEnable = TRUE;
+	d3dRasterizerDesc.MultisampleEnable = FALSE;
+	d3dRasterizerDesc.AntialiasedLineEnable = FALSE;
+	d3dRasterizerDesc.ForcedSampleCount = 0;
+	d3dRasterizerDesc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+
+	return(d3dRasterizerDesc);
+}
+
+void CCubeMapSkyboxShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, void* pContext)
 {
 	pd3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, __uuidof(ID3D12CommandAllocator), (void**)&m_pd3dCommandAllocator);
 	pd3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_pd3dCommandAllocator, NULL, __uuidof(ID3D12GraphicsCommandList), (void**)&m_pd3dCommandList);
 	m_pd3dCommandList->Close();
 
-	m_nObject = 4;
+	m_nObject = 1;
 	m_ppObjects = new CGameObject * [m_nObject];
 
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
@@ -1713,7 +1976,7 @@ void CDynamicMappingShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12Graphic
 	pd3dDevice->CreateDescriptorHeap(&d3dDescriptorHeapDesc, __uuidof(ID3D12DescriptorHeap), (void**)&m_pd3dRtvDescriptorHeap);
 	D3D12_CPU_DESCRIPTOR_HANDLE d3dRtvCPUDescriptorHandle = m_pd3dRtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 
-	CMesh* pMeshIlluminated = new CSphereMeshIlluminated(pd3dDevice, pd3dCommandList, 100.0f, 20, 20);
+	CMesh* pBoxMeshIlluminated = new CBoxMeshIlluminated(pd3dDevice, pd3dCommandList, m_nCubeMapSize, m_nCubeMapSize, m_nCubeMapSize);
 
 	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
 	XMFLOAT2 xmf2TerrainCenter{};
@@ -1723,16 +1986,16 @@ void CDynamicMappingShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12Graphic
 
 	for (int i = 0; i < m_nObject; i++)
 	{
-		m_ppObjects[i] = new CDynamicCubeMappingObject(pd3dDevice, pd3dCommandList, m_nCubeMapSize, d3dDsvCPUDescriptorHandle, d3dRtvCPUDescriptorHandle, this);
+		m_ppObjects[i] = new CSkyboxMappingObject(pd3dDevice, pd3dCommandList, m_nCubeMapSize, d3dDsvCPUDescriptorHandle, d3dRtvCPUDescriptorHandle, this);
 
-		m_ppObjects[i]->SetMesh(0, pMeshIlluminated);
+		m_ppObjects[i]->SetMesh(0, pBoxMeshIlluminated);
 
 		if (pContext) {
-			float fHeight = pTerrain->GetHeight(xmf2TerrainCenter.x, xmf2TerrainCenter.y + 300);
-			m_ppObjects[i]->SetPosition(xmf2TerrainCenter.x, fHeight + 150.0f, xmf2TerrainCenter.y + 300);
+			float fHeight = pTerrain->GetHeight(xmf2TerrainCenter.x, xmf2TerrainCenter.y);
+			m_ppObjects[i]->SetPosition(xmf2TerrainCenter.x, fHeight, xmf2TerrainCenter.y);
 		}
 		else {
-			m_ppObjects[i]->SetPosition(0, 0, 0);
+			m_ppObjects[i]->SetPosition(0, 0, 100);
 		}
 		m_ppObjects[i]->SetCbvGPUDescriptorHandlePtr(d3dCbvGPUDescriptorStartHandle.ptr);
 
@@ -1740,4 +2003,43 @@ void CDynamicMappingShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12Graphic
 		d3dDsvCPUDescriptorHandle.ptr += ::gnDsvDescriptorIncrementSize;
 		d3dRtvCPUDescriptorHandle.ptr += (::gnRtvDescriptorIncrementSize * 6);
 	}
+}
+
+void CCubeMapSkyboxShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
+{
+	CTexturedShader::Render(pd3dCommandList, pCamera);
+	UpdateShaderVariables(pd3dCommandList);
+	for (int j = 0; j < m_nObject; j++)
+	{
+		if (m_ppObjects[j]) m_ppObjects[j]->Render(pd3dCommandList, pCamera);
+	}
+}
+
+void CCubeMapSkyboxShader::OnPreRender(ID3D12Device* pd3dDevice, ID3D12CommandQueue* pd3dCommandQueue, ID3D12Fence* pd3dFence, HANDLE hFenceEvent, CScene* pScene)
+{
+	for (int i = 0; i < m_nObject; i++)
+	{
+		m_pd3dCommandAllocator->Reset();
+		m_pd3dCommandList->Reset(m_pd3dCommandAllocator, NULL);
+
+		m_ppObjects[i]->OnPreRender(m_pd3dCommandList, pScene);
+
+		m_pd3dCommandList->Close();
+
+		ID3D12CommandList* ppd3dCommandLists[] = { m_pd3dCommandList };
+		pd3dCommandQueue->ExecuteCommandLists(1, ppd3dCommandLists);
+
+		UINT64 nFenceValue = pd3dFence->GetCompletedValue();
+		::WaitForGpuComplete(pd3dCommandQueue, pd3dFence, nFenceValue + 1, hFenceEvent);
+	}
+}
+
+D3D12_SHADER_BYTECODE CCubeMapSkyboxShader::CreateVertexShader(ID3DBlob** ppd3dShaderBlob)
+{
+	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "VSMapping", "vs_5_1", ppd3dShaderBlob));
+}
+
+D3D12_SHADER_BYTECODE CCubeMapSkyboxShader::CreatePixelShader(ID3DBlob** ppd3dShaderBlob)
+{
+	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "PSMapping", "ps_5_1", ppd3dShaderBlob));
 }

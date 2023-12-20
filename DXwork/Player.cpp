@@ -397,7 +397,7 @@ CTankPlayer::CTankPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd
 	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
 	//SetPosition(XMFLOAT3(1030.0f, 1000.0f, 1400.0f));
 	if (pTerrain)
-		SetPosition(XMFLOAT3(pTerrain->GetWidth() * 0.5f, 300.0f, pTerrain->GetLength() * 0.5f), false);
+		SetPosition(XMFLOAT3(pTerrain->GetWidth() * 0.5f, 400.0f, pTerrain->GetLength() * 0.5f), false);
 	else
 		SetPosition(XMFLOAT3(0, 0, 0), false);
 	SetPlayerUpdatedContext(pTerrain);
