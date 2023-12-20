@@ -661,7 +661,7 @@ float4 PSMapping(VS_LIGHTING_OUTPUT input) : SV_Target
    // float3 vReflected = normalize(reflect(vFromCamera, input.normalW));
    // float4 cColor = gtxtCubeMap.Sample(gSamplerState, vReflected);
    input.positionW.x = 1.f - input.positionW.x;
-   input.positionW.z = 1.f - input.positionW.z;
+   //input.positionW.z = 1.f - input.positionW.z;
    float4 cColor = gtxtSkyCubeTexture.Sample(gSamplerState, input.positionW);
 
     return (cColor);

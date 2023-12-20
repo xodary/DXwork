@@ -1447,12 +1447,12 @@ void CSkyboxMappingObject::OnPreRender(ID3D12GraphicsCommandList* pd3dCommandLis
 	pScene->OnPrepareRender(pd3dCommandList);
 
 	static XMFLOAT3 pxmf3LookAts[6] = {
-		XMFLOAT3(-m_nCubeMapSize/2, 0.0f, 0.0f), XMFLOAT3(m_nCubeMapSize / 2, 0.0f, 0.0f),
-		XMFLOAT3(0.0f, -m_nCubeMapSize / 2, 0.0f), XMFLOAT3(0.0f, +m_nCubeMapSize / 2, 0.0f),
+		XMFLOAT3(m_nCubeMapSize/2, 0.0f, 0.0f), XMFLOAT3(-m_nCubeMapSize / 2, 0.0f, 0.0f),
+		XMFLOAT3(0.0f, -m_nCubeMapSize / 2, 0.0f), XMFLOAT3(0.0f, m_nCubeMapSize / 2, 0.0f),
 		XMFLOAT3(0.0f, 0.0f, -m_nCubeMapSize / 2), XMFLOAT3(0.0f, 0.0f, m_nCubeMapSize / 2) };
 	static XMFLOAT3 pxmf3Ups[6] = {
 		XMFLOAT3(0.0f, +1.0f, 0.0f), XMFLOAT3(0.0f, +1.0f, 0.0f), 
-		XMFLOAT3(0.0f, 0.0f, +1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f), 
+		XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f), 
 		XMFLOAT3(0.0f, +1.0f, 0.0f), XMFLOAT3(0.0f, +1.0f, 0.0f) };
 
 	float pfClearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
